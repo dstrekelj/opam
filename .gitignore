@@ -48,6 +48,10 @@ src/core/opamParser.mli
 src/opam
 src/opam-admin
 src/opam-installer
+src/opam.exe
+src/opam-admin.exe
+src/opam-admin.top.exe
+src/opam-installer.exe
 src/opam-check
 src/opamlfind
 ._d
