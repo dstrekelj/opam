@@ -18,25 +18,6 @@
    all the global OPAM variables can be set using environment variables
    using OPAM<variable> *)
 
-let check ?(warn=true) var = ref (
-    try
-      match String.lowercase (OpamMisc.getenv ("OPAM"^var)) with
-      | "" | "0" | "no" | "false" -> false
-      | "1" | "yes" | "true" -> true
-      | v ->
-        if warn then
-          Printf.eprintf "[WARNING] Invalid value %S for env variable OPAM%s, \
-                          assumed true.\n" v var;
-        true
-    with Not_found -> false
-  )
-
-let debug            = check ~warn:false "DEBUG"
-let debug_level      =
-  try ref (int_of_string (OpamMisc.getenv ("OPAMDEBUG")))
-  with Not_found | Failure _ -> ref 1
-let _ = if !debug_level > 1 then debug := true
-let verbose          = check "VERBOSE"
 let color_tri_state =
     try (match OpamMisc.getenv "OPAMCOLOR" with
       | "always" -> `Always
@@ -48,6 +29,84 @@ let color_tri_state =
 let color            =
   ref (color_tri_state = `Always ||
        color_tri_state = `Auto && Unix.isatty Unix.stdout)
+
+type text_style =
+  [ `bold
+  | `underline
+  | `black
+  | `red
+  | `green
+  | `yellow
+  | `blue
+  | `magenta
+  | `cyan
+  | `white ]
+
+(* not nestable *)
+let colorise (c: text_style) s =
+  if not !color then s else
+    let code = match c with
+      | `bold      -> "01"
+      | `underline -> "04"
+      | `black     -> "30"
+      | `red       -> "31"
+      | `green     -> "32"
+      | `yellow    -> "33"
+      | `blue      -> "1;34"
+      | `magenta   -> "35"
+      | `cyan      -> "36"
+      | `white     -> "37"
+    in
+    Printf.sprintf "\027[%sm%s\027[m" code s
+
+let acolor_with_width width c oc s =
+  let str = colorise c s in
+  output_string oc str;
+  match width with
+  | None   -> ()
+  | Some w ->
+    if String.length str >= w then ()
+    else output_string oc (String.make (w-String.length str) ' ')
+
+let acolor c oc s = acolor_with_width None c oc s
+let acolor_w width c oc s = acolor_with_width (Some width) c oc s
+
+let display_messages = ref true
+
+let error fmt =
+  Printf.ksprintf (fun str ->
+    Printf.eprintf "%a %s\n%!" (acolor `red) "[ERROR]" str
+  ) fmt
+
+let warning fmt =
+  Printf.ksprintf (fun str ->
+    Printf.eprintf "%a %s\n%!" (acolor `yellow) "[WARNING]" str
+  ) fmt
+
+let note fmt =
+  Printf.ksprintf (fun str ->
+    Printf.eprintf "%a %s\n%!" (acolor `blue) "[NOTE]" str
+  ) fmt
+
+let check ?(warn=true) var = ref (
+    try
+      match String.lowercase (OpamMisc.getenv ("OPAM"^var)) with
+      | "" | "0" | "no" | "false" -> false
+      | "1" | "yes" | "true" -> true
+      | v ->
+        if warn then
+          warning "Invalid value %S for env variable OPAM%s, \
+                          assumed true.\n" v var;
+        true
+    with Not_found -> false
+  )
+
+let debug            = check ~warn:false "DEBUG"
+let debug_level      =
+  try ref (int_of_string (OpamMisc.getenv ("OPAMDEBUG")))
+  with Not_found | Failure _ -> ref 1
+let _ = if !debug_level > 1 then debug := true
+let verbose          = check "VERBOSE"
 let keep_build_dir   = check "KEEPBUILDDIR"
 let no_base_packages = check "NOBASEPACKAGES"
 let no_checksums     = check "NOCHECKSUMS"
@@ -190,34 +249,7 @@ let timer () =
 let global_start_time =
   Unix.gettimeofday ()
 
-type text_style =
-  [ `bold
-  | `underline
-  | `black
-  | `red
-  | `green
-  | `yellow
-  | `blue
-  | `magenta
-  | `cyan
-  | `white ]
 
-(* not nestable *)
-let colorise (c: text_style) s =
-  if not !color then s else
-    let code = match c with
-      | `bold      -> "01"
-      | `underline -> "04"
-      | `black     -> "30"
-      | `red       -> "31"
-      | `green     -> "32"
-      | `yellow    -> "33"
-      | `blue      -> "1;34"
-      | `magenta   -> "35"
-      | `cyan      -> "36"
-      | `white     -> "37"
-    in
-    Printf.sprintf "\027[%sm%s\027[m" code s
 
 let indent_left str n =
   if String.length str >= n then str
@@ -225,18 +257,6 @@ let indent_left str n =
     let nstr = String.make n ' ' in
     String.blit str 0 nstr 0 (String.length str);
     nstr
-
-let acolor_with_width width c oc s =
-  let str = colorise c s in
-  output_string oc str;
-  match width with
-  | None   -> ()
-  | Some w ->
-    if String.length str >= w then ()
-    else output_string oc (String.make (w-String.length str) ' ')
-
-let acolor c oc s = acolor_with_width None c oc s
-let acolor_w width c oc s = acolor_with_width (Some width) c oc s
 
 let timestamp () =
   let time = Unix.gettimeofday () -. global_start_time in
@@ -259,21 +279,6 @@ let log section ?(level=1) fmt =
    stringifications *)
 let slog to_string channel x = output_string channel (to_string x)
 
-let error fmt =
-  Printf.ksprintf (fun str ->
-    Printf.eprintf "%a %s\n%!" (acolor `red) "[ERROR]" str
-  ) fmt
-
-let warning fmt =
-  Printf.ksprintf (fun str ->
-    Printf.eprintf "%a %s\n%!" (acolor `yellow) "[WARNING]" str
-  ) fmt
-
-let note fmt =
-  Printf.ksprintf (fun str ->
-    Printf.eprintf "%a %s\n%!" (acolor `blue) "[NOTE]" str
-  ) fmt
-
 exception Exit of int
 
 exception Exec of string * string array * string array
@@ -285,8 +290,6 @@ let error_and_exit fmt =
     error "%s" str;
     raise (Exit 66)
   ) fmt
-
-let display_messages = ref true
 
 let msg =
   if !display_messages then (
