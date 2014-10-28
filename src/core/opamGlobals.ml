@@ -73,19 +73,169 @@ let acolor_w width c oc s = acolor_with_width (Some width) c oc s
 
 let display_messages = ref true
 
+type console_screen_buffer_info = {
+  size: int * int;
+  cursorPosition: int * int;
+  attributes: int;
+  window: int * int * int * int;
+  maximumWindowSize: int * int;
+}
+
+type handle
+
+(*
+ * Standard output is handle -11 (winbase.h; STD_OUTPUT_HANDLE)
+ *)
+external getStdHandle : int -> handle = "Console_GetStdHandle"
+external getConsoleScreenBufferInfo : handle -> console_screen_buffer_info = "Console_GetConsoleScreenBufferInfo"
+external setConsoleTextAttribute : handle -> int -> unit = "Console_SetConsoleTextAttribute"
+
+(*
+ * Layout of attributes (wincon.h)
+ *
+ * Bit 0 - Blue --\
+ * Bit 1 - Green   } Foreground
+ * Bit 2 - Red    /
+ * Bit 3 - Bold -/
+ * Bit 4 - Blue --\
+ * Bit 5 - Green   } Background
+ * Bit 6 - Red    /
+ * Bit 7 - Bold -/
+ * Bit 8 - Leading Byte
+ * Bit 9 - Trailing Byte
+ * Bit a - Top horizontal
+ * Bit b - Left vertical
+ * Bit c - Right vertical
+ * Bit d - unused
+ * Bit e - Reverse video
+ * Bit f - Underscore
+ *)
+
+let win32_msg ch msg =
+  let hConsoleOutput = getStdHandle (-11) (* XXX Error handling *) in
+  let {attributes} = getConsoleScreenBufferInfo hConsoleOutput in
+  let background = (attributes land 0b1110000) lsr 4 in
+  let length = String.length msg in
+  let executeCode =
+    let color = ref (attributes land 0b1111) in
+    let blend ?(inheritbold = true) bits =
+      let bits =
+        if inheritbold then
+          (!color land 0b1000) lor (bits land 0b111)
+        else
+          bits in
+      let result = (attributes land (lnot 0b1111)) lor (bits land 0b1000) lor ((bits land 0b111) lxor background) in
+      color := (result land 0b1111);
+      result in
+    fun code ->
+      let l = String.length code in
+      assert (l > 0 && code.[0] = '[');
+      let attributes =
+        match String.sub code 1 (l - 1) with
+          "01" ->
+            blend ~inheritbold:false (!color lor 0b1000)
+        | "04" ->
+            (* Don't have underline, so change the background *)
+            (attributes land (lnot 0b11111111)) lor 0b01110000
+        | "30" ->
+            blend 0b000
+        | "31" ->
+            blend 0b100
+        | "32" ->
+            blend 0b010
+        | "33" ->
+            blend 0b110
+        | "1;34" ->
+            blend ~inheritbold:false 0b1001
+        | "35" ->
+            blend 0b101
+        | "36" ->
+            blend 0b011
+        | "37" ->
+            blend 0b111
+        | "" ->
+            blend ~inheritbold:false 0b0111
+          | _ -> assert false in
+        setConsoleTextAttribute hConsoleOutput attributes in
+  let rec f index start inCode =
+    if index < length
+    then let c = msg.[index] in
+         if c = '\027' then begin
+           assert (not inCode);
+           let fragment = String.sub msg start (index - start) in
+           let index = succ index in
+           if fragment <> "" then
+             Printf.fprintf ch "%s%!" fragment;
+           f index index true end
+         else
+           if inCode && c = 'm' then
+             let fragment = String.sub msg start (index - start) in
+             let index = succ index in
+             executeCode fragment;
+             f index index false
+           else
+             f (succ index) start inCode
+    else let fragment = String.sub msg start (index - start) in
+         if fragment <> "" then
+           if inCode then
+             executeCode fragment
+           else
+             Printf.fprintf ch "%s%!" fragment
+         else
+           flush ch in
+  f 0 0 false
+
+(*
+ * For Win32 colour support, all output should go through this function
+ *)
+let gen_msg =
+  if !display_messages then
+    if OpamMisc.os () = OpamMisc.Win32 && !color then
+      fun ch fmt ->
+        let output = Buffer.create 1024
+        and buf = String.create 1024 in
+        flush stderr;
+        let (i, o) = Unix.pipe () in
+        let pipe = Unix.out_channel_of_descr o in
+        let f pipe =
+          flush pipe;
+          Unix.close o;
+          begin
+            try
+              while true
+              do
+                let read = Unix.read i buf 0 1024 in
+                Buffer.add_substring output buf 0 read
+              done
+            with _ ->
+              Unix.close i
+          end;
+          win32_msg ch (Buffer.contents output);
+          Buffer.clear output in
+        Printf.kfprintf f pipe fmt
+    else
+      fun ch fmt ->
+        flush stderr;
+        Printf.kfprintf flush ch fmt
+  else
+    fun ch fmt ->
+      Printf.ifprintf ch fmt
+
+let msg fmt = gen_msg stdout fmt
+
 let error fmt =
   Printf.ksprintf (fun str ->
-    Printf.eprintf "%a %s\n%!" (acolor `red) "[ERROR]" str
+    gen_msg stderr "%a %s\n%!" (acolor `red) "[ERROR]" str
   ) fmt
 
 let warning fmt =
   Printf.ksprintf (fun str ->
-    Printf.eprintf "%a %s\n%!" (acolor `yellow) "[WARNING]" str
+    gen_msg stderr "%a %s\n%!" (acolor `yellow) "[WARNING]" str
   ) fmt
 
 let note fmt =
   Printf.ksprintf (fun str ->
-    Printf.eprintf "%a %s\n%!" (acolor `blue) "[NOTE]" str
+    gen_msg stderr "%a %s\n%!" (acolor `blue) "[NOTE]" str
   ) fmt
 
 let check ?(warn=true) var = ref (
@@ -249,8 +399,6 @@ let timer () =
 let global_start_time =
   Unix.gettimeofday ()
 
-
-
 let indent_left str n =
   if String.length str >= n then str
   else
@@ -269,7 +417,7 @@ let timestamp () =
 
 let log section ?(level=1) fmt =
   if !debug && level <= !debug_level then
-    Printf.fprintf stderr ("%s  %06d  %a  " ^^ fmt ^^ "\n%!")
+    gen_msg stderr ("%s  %06d  %a  " ^^ fmt ^^ "\n%!")
       (timestamp ()) (Unix.getpid ()) (acolor_w 30 `yellow) section
   else
     Printf.ifprintf stderr fmt
@@ -291,29 +439,20 @@ let error_and_exit fmt =
     raise (Exit 66)
   ) fmt
 
-let msg =
-  if !display_messages then (
-    fun fmt ->
-      flush stderr;
-      Printf.kfprintf flush stdout fmt
-  ) else (
-    fun fmt ->
-      Printf.ifprintf stdout fmt
-  )
-
 let header_width () = 80
 
 let header_msg fmt =
   let utf8camel = "\xF0\x9F\x90\xAB " in (* UTF-8 <U+1F42B, U+0020> *)
   let padding = "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\
                  =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" in
+  let print_string s = gen_msg stdout "%s" s in
   Printf.ksprintf (fun str ->
     flush stderr;
     if !display_messages then (
       print_char '\n';
       let wpad = header_width () - String.length str - 2 in
       let wpadl = 4 in
-        print_string (colorise `cyan (String.sub padding 0 wpadl));
+        gen_msg stdout "%s" (colorise `cyan (String.sub padding 0 wpadl));
       print_char ' ';
       print_string (colorise `bold str);
       print_char ' ';
@@ -338,6 +477,7 @@ let header_error fmt =
           output_char stderr '\n';
           let wpad = header_width () - String.length head - 8 in
           let wpadl = 4 in
+          let output_string ch = gen_msg ch "%s" in
           output_string stderr (colorise `red (String.sub padding 0 wpadl));
           output_char stderr ' ';
           output_string stderr (colorise `bold "ERROR");

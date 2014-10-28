@@ -1899,21 +1899,22 @@ let run default commands =
     if !OpamGlobals.verbose then
       Printf.eprintf "'%s' failed.\n" (String.concat " " (Array.to_list Sys.argv));
     let exit_code = ref 1 in
+    let eprintf = OpamGlobals.gen_msg stderr in
     begin match e with
       | OpamGlobals.Exit i ->
         exit_code := i;
         if !OpamGlobals.debug && i <> 0 then
-          Printf.eprintf "%s" (OpamMisc.pretty_backtrace e)
+          eprintf "%s" (OpamMisc.pretty_backtrace e)
       | OpamSystem.Internal_error _
       | OpamSystem.Process_error _ ->
-        Printf.eprintf "%s\n" (Printexc.to_string e);
-        Printf.eprintf "%s" (OpamMisc.pretty_backtrace e);
+        eprintf "%s\n" (Printexc.to_string e);
+        eprintf "%s" (OpamMisc.pretty_backtrace e);
       | Sys.Break -> exit_code := 130
       | Failure msg ->
-        Printf.eprintf "Fatal error: %s\n" msg;
-        Printf.eprintf "%s" (OpamMisc.pretty_backtrace e);
+        eprintf "Fatal error: %s\n" msg;
+        eprintf "%s" (OpamMisc.pretty_backtrace e);
       | _ ->
-        Printf.eprintf "Fatal error:\n%s\n" (Printexc.to_string e);
-        Printf.eprintf "%s" (OpamMisc.pretty_backtrace e);
+        eprintf "Fatal error:\n%s\n" (Printexc.to_string e);
+        eprintf "%s" (OpamMisc.pretty_backtrace e);
     end;
     exit !exit_code
