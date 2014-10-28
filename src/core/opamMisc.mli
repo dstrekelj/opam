@@ -237,6 +237,19 @@ val filter_map: ('a -> 'b option) -> 'a list -> 'b list
 (** Insert a value in an ordered list *)
 val insert: ('a -> 'a -> int) -> 'a -> 'a list -> 'a list
 
+type os =
+    Darwin
+  | Linux
+  | FreeBSD
+  | OpenBSD
+  | NetBSD
+  | DragonFly
+  | Cygwin
+  | Win32
+  | Unix
+  | Other of string
+val os : unit -> os
+
 (** Lazy environment variable *)
 val getenv: string -> string
 

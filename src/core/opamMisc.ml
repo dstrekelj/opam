@@ -424,6 +424,40 @@ let uname_s () =
   with Unix.Unix_error _ | Sys_error _ ->
     None
 
+type os =
+    Darwin
+  | Linux
+  | FreeBSD
+  | OpenBSD
+  | NetBSD
+  | DragonFly
+  | Cygwin
+  | Win32
+  | Unix
+  | Other of string
+
+let osref = ref None
+
+let os () =
+  match !osref with
+  | None ->
+    let os = match Sys.os_type with
+      | "Unix" -> begin
+          match uname_s () with
+          | Some "Darwin"    -> Darwin
+          | Some "Linux"     -> Linux
+          | Some "FreeBSD"   -> FreeBSD
+          | Some "OpenBSD"   -> OpenBSD
+          | Some "NetBSD"    -> NetBSD
+          | Some "DragonFly" -> DragonFly
+          | _                -> Unix
+        end
+      | "Win32"  -> Win32
+      | "Cygwin" -> Cygwin
+      | s        -> Other s in
+    osref := Some os;
+    os
+  | Some os -> os
 
 let getenv n =
   List.assoc n (Lazy.force env)

@@ -150,7 +150,7 @@ val read: ('a, unit, string, string option) format4 -> 'a
 
 val editor : string lazy_t
 
-type os =
+type os = OpamMisc.os =
     Darwin
   | Linux
   | FreeBSD
