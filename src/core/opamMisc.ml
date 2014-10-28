@@ -409,6 +409,21 @@ let env = lazy (
     | Some p -> p
   ) (Array.to_list e)
 )
+let with_process_in cmd f =
+  let ic = Unix.open_process_in cmd in
+  try
+    let r = f ic in
+    ignore (Unix.close_process_in ic) ; r
+  with exn ->
+    ignore (Unix.close_process_in ic) ; raise exn
+
+let uname_s () =
+  try
+    with_process_in "uname -s"
+      (fun ic -> Some (strip (input_line ic)))
+  with Unix.Unix_error _ | Sys_error _ ->
+    None
+
 
 let getenv n =
   List.assoc n (Lazy.force env)
@@ -463,14 +478,6 @@ let pretty_backtrace e =
 
 let default_columns = 100
 
-let with_process_in cmd f =
-  let ic = Unix.open_process_in cmd in
-  try
-    let r = f ic in
-    ignore (Unix.close_process_in ic) ; r
-  with exn ->
-    ignore (Unix.close_process_in ic) ; raise exn
-
 let get_terminal_columns () =
   try           (* terminfo *)
     with_process_in "tput cols"
@@ -494,13 +501,6 @@ let terminal_columns =
     if Unix.isatty Unix.stdout
     then Lazy.force v
     else 80
-
-let uname_s () =
-  try
-    with_process_in "uname -s"
-      (fun ic -> Some (strip (input_line ic)))
-  with Unix.Unix_error _ | Sys_error _ ->
-    None
 
 let uname_m () =
   try
