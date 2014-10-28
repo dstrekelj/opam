@@ -220,7 +220,7 @@ module API = struct
             if !OpamGlobals.color && OpamPackage.Name.Set.mem name roots then
               OpamGlobals.colorise `underline name_str
             else name_str in
-          Printf.printf "%s " colored_name
+          OpamGlobals.msg "%s " colored_name
       else
         let synop_len =
           let col = OpamMisc.terminal_columns () in
@@ -246,7 +246,7 @@ module API = struct
               else
                 vs, OpamGlobals.colorise `magenta vs, ""
           in
-          Printf.printf "%s  %s%s  %s\n"
+          OpamGlobals.msg "%s  %s%s  %s\n"
             (OpamMisc.indent_left colored_name ~visual:name_str max_n)
             (OpamMisc.indent_right colored_version ~visual:sversion max_v)
             pinned
