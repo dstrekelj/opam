@@ -26,4 +26,9 @@ let () =
       );
       OpamJson.output ()
     );
-  run default commands
+  if OpamMisc.os () = OpamMisc.Win32 && Array.length Sys.argv > 1 && Sys.argv.(1) = "--fork" then
+    let () = set_binary_mode_in stdin true in
+    let (f : unit -> unit) = Marshal.from_channel stdin in
+    f ()
+  else
+    run default commands

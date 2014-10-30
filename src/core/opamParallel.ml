@@ -16,6 +16,8 @@
 
 open OpamMisc.OP
 
+external waitpids : int list -> int -> int * Unix.process_status = "Parallel_waitpids"
+
 let log fmt = OpamGlobals.log "PARALLEL" fmt
 let slog = OpamGlobals.slog
 
@@ -142,19 +144,27 @@ module Make (G : G) : SIG with module G = G
       | Unix.WSTOPPED n -> "stop", n in
     Printf.sprintf "%s %d" st n
 
-  let wait pids =
-    let rec aux () =
-      let pid, status = Unix.wait () in
-      if OpamMisc.IntMap.mem pid pids then (
+  let wait =
+    if OpamMisc.os () = OpamMisc.Win32 then
+      fun pids ->
+        let pids, len = OpamMisc.IntMap.fold (fun e _ (l, n) -> (e::l, succ n)) pids ([], 0) in
+        let ((pid, status) as result) = waitpids pids len in
         log "%d is dead (%a)" pid (slog string_of_status) status;
-        pid, status
-      ) else (
-        log "%d: unknown child (pids=%a)!"
-          pid
-          (slog string_of_pids) pids;
+        result
+    else
+      fun pids ->
+        let rec aux () =
+          let pid, status = Unix.wait () in
+          if OpamMisc.IntMap.mem pid pids then (
+            log "%d is dead (%a)" pid (slog string_of_status) status;
+            pid, status
+          ) else (
+            log "%d: unknown child (pids=%a)!"
+              pid
+              (slog string_of_pids) pids;
+            aux ()
+          ) in
         aux ()
-      ) in
-    aux ()
 
   exception Errors of (G.V.t * error) list * G.V.t list
   exception Cyclic of G.V.t list list
@@ -244,6 +254,9 @@ module Make (G : G) : SIG with module G = G
             OpamGlobals.error "%s"
               (Printexc.to_string e);
             (* Cleanup *)
+            (* XXX This will fail on Windows - there's a reason Unix.kill isn't implemented directly
+             *     Is TerminateProcess suitable?
+             *)
             errors := OpamMisc.IntMap.fold
                 (fun i (n,_) errors ->
                    (try Unix.kill i Sys.sigint with _ -> ());
@@ -285,9 +298,7 @@ module Make (G : G) : SIG with module G = G
         (* We execute the 'pre' function before the fork *)
         pre n;
 
-        match Unix.fork () with
-        | -1  -> OpamGlobals.error_and_exit "Cannot fork a new process"
-        | 0   ->
+        let slave () =
           log "Spawning a new process";
           Sys.catch_break false;
           let return p =
@@ -309,12 +320,28 @@ module Make (G : G) : SIG with module G = G
                 then e
                 else e ^ "\n" ^ b in
               return (Internal_error error)
-          end
-        | pid ->
+          end in
+
+        let master pid =
           log "Creating process %d" pid;
           let from_child () = open_in_bin error_file in
           pids := OpamMisc.IntMap.add pid (n, from_child) !pids;
-          loop (nslots - 1)
+          loop (nslots - 1) in
+
+        if OpamMisc.os () = OpamMisc.Win32 then
+          let (inC, outC) = Unix.pipe () in
+          let ch = Unix.out_channel_of_descr outC in
+          let pid = Unix.create_process Sys.argv.(0) [| Sys.argv.(0); "--fork" |] inC Unix.stdout Unix.stderr in
+          Marshal.to_channel ch slave [Marshal.Closures];
+          flush ch;
+          master pid
+        else
+          match Unix.fork () with
+          | -1  -> OpamGlobals.error_and_exit "Cannot fork a new process"
+          | 0   ->
+              slave ()
+          | pid ->
+              master pid
       ) in
     loop n
 

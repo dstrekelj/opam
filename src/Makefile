@@ -125,7 +125,8 @@ SRC_core = \
   opamActionGraph.ml \
   opamFilter.ml \
   opamRepository.ml \
-  opamConsole.c
+  opamConsole.c \
+	opamWait.c
 
 define PROJ_core
   SOURCES = $(call addmli,core,$(SRC_core))
