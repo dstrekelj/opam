@@ -256,6 +256,12 @@ val getenv: string -> string
 (** Lazy environment *)
 val env: unit -> (string * string) list
 
+(** Windows-only: update the user's persistent HOME environment variable *)
+val persistHomeDirectory : string -> unit
+
+(** Windows-only: update an environment variable in the parent (i.e. shell) process's environment *)
+val parent_putenv : string -> string -> bool
+
 (** To use when catching default exceptions: ensures we don't catch fatal errors
     like C-c. try-with should _always_ (by decreasing order of preference):
     - either catch specific exceptions

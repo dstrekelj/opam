@@ -473,6 +473,37 @@ let getenv =
 
 let env () = Lazy.force env
 
+external parent_putenv : string -> string -> bool = "Env_parent_putenv"
+
+type 'a registry =
+  | REG_SZ : string registry
+
+(*
+ * These constants are used by the C module, so the order is important.
+ *)
+type regroot = HKEY_CLASSES_ROOT
+             | HKEY_CURRENT_USER
+             | HKEY_LOCAL_MACHINE
+             | HKEY_USERS
+
+external writeRegistry : regroot -> string -> string -> 'a registry -> 'a -> unit = "Env_WriteRegistry"
+
+type ('a, 'b, 'c) winmessage =
+  | WM_SETTINGCHANGE : (int, string, int) winmessage
+
+external sendMessageTimeout : int -> int -> int -> ('a, 'b, 'c) winmessage -> 'a -> 'b -> int * 'c = "Env_SendMessageTimeout_byte" "Env_SendMessageTimeout"
+
+let persistHomeDirectory home =
+  (* Update our environment (largely cosmetic, as [env] already initialised) *)
+  Unix.putenv "HOME" home;
+  (* Update our parent's environment *)
+  ignore (parent_putenv "HOME" home);
+  (* Persist our user's environment *)
+  writeRegistry HKEY_CURRENT_USER "Environment" "HOME" REG_SZ home;
+  (* Broadcast the change (or a reboot would be required) *)
+  (* HWND_BROADCAST = 0xffff; SMTO_ABORTIFHUNG = 0x2 (WinUser.h) *)
+  ignore (sendMessageTimeout 0xffff 5000 0x2 WM_SETTINGCHANGE 0 "Environment")
+
 let indent_left s ?(visual=s) nb =
   let nb = nb - String.length visual in
   if nb <= 0 then
