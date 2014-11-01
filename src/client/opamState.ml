@@ -2218,7 +2218,47 @@ let update_setup_interactive t shell dot_profile =
     update_setup t user global;
     modify_user_conf in
 
+  let updateHome = (OpamMisc.os () = OpamMisc.Win32 && (try ignore (Sys.getenv "HOME"); false with Not_found -> true)) in
+
   OpamGlobals.msg "\n";
+
+  if updateHome then begin
+    let home = OpamMisc.getenv "HOME" in
+    let persistHomeDirectory home =
+      OpamGlobals.msg "Persisting HOME (this may take a few seconds)...";
+      OpamMisc.persistHomeDirectory home;
+      OpamGlobals.msg " done\n" in
+    match OpamGlobals.read
+        "The HOME environment variable is not set, so OPAM has defaulted to:\n\
+        \  %s\n\
+         OCaml ideally requires $HOME to be set properly (in order to find .ocamlinit)\n\
+         Do you want OPAM to alter your persistent environment so that HOME is always set?\n\
+         (default is 'yes', use 'p' to use a directory other than %s)\n\
+        \    [Y/n/p]" home home
+    with
+    | Some value when value <> "" && (value.[0] = 'Y' || value.[0] = 'y' || String.lowercase value = "yes") ->
+        persistHomeDirectory home
+    | Some value when value <> "" && (value.[0] = 'p' || value.[0] = 'P' || String.lowercase value = "path") ->
+        let rec f () =
+          match OpamGlobals.read "  Enter the directory to use:" with
+          | None ->
+              OpamGlobals.msg "-- No directory name: skipping\ --\n"
+          | Some dir ->
+              if Sys.file_exists dir then
+                if (Unix.stat dir).Unix.st_kind = Unix.S_DIR then
+                  persistHomeDirectory dir
+                else begin
+                  OpamGlobals.msg "-- %s is not a directory --\n" dir;
+                  f ()
+                end
+              else begin
+                OpamGlobals.msg "-- %s not found --\n" dir;
+                f ()
+              end in
+        f ()
+    | _ ->
+        ()
+  end;
 
   match OpamGlobals.read
       "In normal operation, OPAM only alters files within ~/.opam.\n\
