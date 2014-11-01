@@ -459,8 +459,17 @@ let os () =
     os
   | Some os -> os
 
-let getenv n =
-  List.assoc n (Lazy.force env)
+let getenv =
+  (* Environment variables are not case-sensitive on Windows *)
+  if os () = Win32 then
+    let assoc l n =
+      let rec assoc = function
+      | [] -> raise Not_found
+      | (a,b)::l -> if compare (String.lowercase a) n = 0 then b else assoc l in
+      assoc l in
+    fun n -> assoc (Lazy.force env) (String.lowercase n)
+  else
+    fun n -> List.assoc n (Lazy.force env)
 
 let env () = Lazy.force env
 
