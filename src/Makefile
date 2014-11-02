@@ -126,7 +126,9 @@ SRC_core = \
   opamFilter.ml \
   opamRepository.ml \
   opamConsole.c \
-	opamWait.c
+	opamWait.c \
+	opamInject.c \
+	opamEnv.c
 
 define PROJ_core
   SOURCES = $(call addmli,core,$(SRC_core))
@@ -197,6 +199,9 @@ define PROJ_opam
   LIBS = $(LIBS) $(OPAMLIB)
 endef
 export PROJ_opam
+
+opam-putenv.exe: core/opamInject.c tools/opam-putenv.c
+	x86_64-w64-mingw32-gcc -o $@ -I core tools/opam-putenv.c
 
 # -- opam utils -- #
 

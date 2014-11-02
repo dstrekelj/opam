@@ -473,7 +473,36 @@ let getenv =
 
 let env () = Lazy.force env
 
-external parent_putenv : string -> string -> bool = "Env_parent_putenv"
+external parent_putenv_stub : string -> string -> bool = "Env_parent_putenv"
+external isWoW64Mismatch_stub : unit -> int = "Env_IsWoW64Mismatch"
+
+let parent_putenv =
+  let ppid =
+    if os () = Win32 then
+      isWoW64Mismatch_stub ()
+    else
+      0 in
+  if ppid > 0 then
+    (*
+     * Expect to see opam-putenv.exe in the same directory as opam.exe, rather than the path
+     *)
+    let putenv_exe = Filename.concat (Filename.dirname Sys.executable_name) "opam-putenv.exe" in
+    let ppid = string_of_int ppid in
+    if Sys.file_exists putenv_exe then
+      fun key value ->
+        let pid = Unix.create_process putenv_exe [| putenv_exe; ppid; key; value |] Unix.stdin Unix.stdout Unix.stderr in
+        fst (Unix.waitpid [] pid) = 0
+    else
+      let shownWarning = ref false in
+      fun _ _ ->
+        if not !shownWarning then begin
+          shownWarning := true;
+          Printf.eprintf "opam-putenv was not found - OPAM is unable to alter environment variables\n%!";
+          false
+        end else
+          false
+  else
+    parent_putenv_stub
 
 type 'a registry =
   | REG_SZ : string registry

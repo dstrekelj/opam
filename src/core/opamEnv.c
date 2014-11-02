@@ -153,142 +153,99 @@ CAMLprim value Env_SendMessageTimeout_byte(value * argv, int argn)
  * Full technical details at http://www.codeproject.com/Articles/4610/Three-Ways-to-Inject-Your-Code-into-Another-Proces#section_3
  */
 
-/* SetEnvironmentVariable function pointer type */
-typedef LRESULT (WINAPI *SETENVIRONMENTVARIABLE)(LPCTSTR,LPCTSTR);
-
-/*
- * Data structure to pass to the remote thread
- */
-typedef struct {
-  SETENVIRONMENTVARIABLE SetEnvironmentVariable;
-  TCHAR lpName[MAX_PATH + 1];
-  TCHAR lpValue[MAX_PATH + 1];
-  BOOL result;
-} INJDATA, *PINJDATA;
-
-/*
- * Code to inject into the parent process
- */
-static DWORD WINAPI ThreadFunc (INJDATA *pData)
+char* getCurrentProcess(PROCESSENTRY32 *entry)
 {
-  // Call the provided function pointer with its two arguments and return the result
-  pData->result = pData->SetEnvironmentVariable(pData->lpName, pData->lpValue);
-
-  return 0;
-}
-
-/*
- * This is a dummy function used to calculate the code size of ThreadFunc.
- * This assumes that the linker does not re-order the functions.
- *   If it's a worry, could make the symbols public and use /ORDER (http://msdn.microsoft.com/en-us/library/00kh39zz.aspx)
- *   Presumably there's a gcc equivalent for mingw.
- */
-static void AfterThreadFunc (void)
-{
-  return;
-}
-
-CAMLprim value Env_parent_putenv(value key, value val)
-{
-  CAMLparam2(key, val);
-
-  if (caml_string_length(key) > MAX_PATH || caml_string_length(val) > MAX_PATH)
-    caml_invalid_argument("Strings too long");
-
   // Create a Toolhelp Snapshot of running processes
   HANDLE hProcessSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  entry->dwSize = sizeof(PROCESSENTRY32);
 
   if (hProcessSnapshot == INVALID_HANDLE_VALUE)
-    caml_failwith("Env_parent_putenv: could not create snapshot");
+    return "Env_parent_putenv: could not create snapshot";
 
   // Locate our process
-  PROCESSENTRY32 entry;
-  if (!Process32First(hProcessSnapshot, &entry))
+  if (!Process32First(hProcessSnapshot, entry))
   {
     CloseHandle(hProcessSnapshot);
-    caml_failwith("Env_parent_putenv: could not walk process tree");
+    return "Env_parent_putenv: could not walk process tree";
   }
 
   DWORD processId = GetCurrentProcessId();
 
-  while (entry.th32ProcessID != processId)
+  while (entry->th32ProcessID != processId)
   {
-    if (!Process32Next(hProcessSnapshot, &entry))
+    if (!Process32Next(hProcessSnapshot, entry))
     {
       CloseHandle(hProcessSnapshot);
-      caml_failwith("Env_parent_putenv: could not find process!");
+      return "Env_parent_putenv: could not find process!";
     }
   }
 
   // Finished with the snapshot
   CloseHandle(hProcessSnapshot);
 
-  // Open the parent process for code injection
-  HANDLE hProcess = OpenProcess(PROCESS_CREATE_THREAD | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE | PROCESS_VM_READ, FALSE, entry.th32ParentProcessID);
+  return NULL;
+}
 
-  if (!hProcess)
-    caml_failwith("Env_parent_putenv: could not open parent process");
+CAMLprim value Env_parent_putenv(value key, value val)
+{
+  CAMLparam2(key, val);
+  CAMLlocal1(res);
 
-  // Set-up the instruction
-  INJDATA payload = {(SETENVIRONMENTVARIABLE)GetProcAddress(GetModuleHandle("kernel32"), "SetEnvironmentVariableA"), FALSE, "", ""};
-  strcpy(payload.lpName, String_val(key));
-  strcpy(payload.lpValue, String_val(val));
+  if (caml_string_length(key) > MAX_PATH || caml_string_length(val) > MAX_PATH)
+    caml_invalid_argument("Strings too long");
 
-  // Allocate a page in the parent process to hold the instruction and copy payload to it
-  INJDATA *pData = (INJDATA*)VirtualAllocEx(hProcess, 0, sizeof(INJDATA), MEM_COMMIT, PAGE_READWRITE);
-  if (!pData)
+  PROCESSENTRY32 entry;
+  char* msg = getCurrentProcess(&entry);
+  if (!msg)
+    caml_failwith(msg);
+
+  char* result = InjectSetEnvironmentVariable(entry.th32ParentProcessID, String_val(key), String_val(val));
+
+  if (result == NULL)
   {
-    CloseHandle(hProcess);
-    caml_failwith("Env_parent_putenv: could not allocate page in parent process");
+    res = Val_true;
   }
-  if (!WriteProcessMemory(hProcess, pData, &payload, sizeof(INJDATA), NULL))
+  else if (strlen(result) == 0)
   {
-    VirtualFreeEx(hProcess, pData, 0, MEM_RELEASE);
-    CloseHandle(hProcess);
-    caml_failwith("Env_parent_putenv: could not copy data to parent process");
+    res = Val_false;
   }
-
-  // Allocate a page in the parent process to hold ThreadFunc and copy the code there
-  const int codeSize = ((LPBYTE)AfterThreadFunc - (LPBYTE)ThreadFunc);
-  DWORD* pCode = (PDWORD)VirtualAllocEx(hProcess, 0, codeSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  if (!pCode)
+  else
   {
-    VirtualFreeEx(hProcess, pData, 0, MEM_RELEASE);
-    CloseHandle(hProcess);
-    caml_failwith("Env_parent_putenv: could not allocate executable page in parent process");
-  }
-  if (!WriteProcessMemory(hProcess, pCode, &ThreadFunc, codeSize, NULL))
-  {
-    VirtualFreeEx(hProcess, pCode, 0, MEM_RELEASE);
-    VirtualFreeEx(hProcess, pData, 0, MEM_RELEASE);
-    CloseHandle(hProcess);
-    caml_failwith("Env_parent_putenv: could not copy code to parent process");
+    caml_failwith(result);
   }
 
-  // Start the remote thread
-  HANDLE hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)pCode, pData, 0, NULL);
-  if (!hThread)
+  CAMLreturn(res);
+}
+
+typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+
+CAMLprim value Env_IsWoW64Mismatch(value unit)
+{
+  CAMLparam1(unit);
+
+  PROCESSENTRY32 entry;
+  char* msg = getCurrentProcess(&entry);
+  if (msg)
+    caml_failwith(msg);
+
+  // 32-bit versions may or may not have IsWow64Process (depends on age). Recommended way is to use
+  // GetProcAddress to obtain IsWow64Process, rather than relying on Windows.h.
+  // See http://msdn.microsoft.com/en-gb/library/windows/desktop/ms684139(v=vs.85).aspx
+  LPFN_ISWOW64PROCESS IsWoW64Process;
+  IsWoW64Process = (LPFN_ISWOW64PROCESS)GetProcAddress(GetModuleHandle("kernel32"), "IsWow64Process");
+  BOOL pidWoW64 = FALSE, ppidWoW64 = FALSE;
+  HANDLE hProcess;
+  if (IsWoW64Process)
   {
-    VirtualFreeEx(hProcess, pCode, 0, MEM_RELEASE);
-    VirtualFreeEx(hProcess, pData, 0, MEM_RELEASE);
-    CloseHandle(hProcess);
-    caml_failwith("Env_parent_putenv: could not start remote thread in parent");
+    IsWoW64Process(GetCurrentProcess(), &pidWoW64);
+    if ((hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, entry.th32ParentProcessID)))
+    {
+      IsWoW64Process(hProcess, &ppidWoW64);
+      CloseHandle(hProcess);
+    }
   }
 
-  // Wait for the thread to terminate
-  // Intentionally not releasing the OCaml runtime lock (i.e. I haven't considered if it's safe to do so!)
-  WaitForSingleObject(hThread, INFINITE);
-  CloseHandle(hThread);
-
-  // Get the result back
-  ReadProcessMemory(hProcess, pData, &payload, sizeof(INJDATA), NULL);
-
-  // Release the memory
-  VirtualFreeEx(hProcess, pCode, 0, MEM_RELEASE);
-  VirtualFreeEx(hProcess, pData, 0, MEM_RELEASE);
-  CloseHandle(hProcess);
-
-  CAMLreturn(Val_bool(payload.result));
+  CAMLreturn(Val_int((pidWoW64 != ppidWoW64 ? entry.th32ParentProcessID : 0)));
 }
 #else
 CAMLprim value Filename_SHGetSpecialFolderPath(value nFolder, value dwFlags)
@@ -323,5 +280,12 @@ CAMLprim value Env_parent_putenv(value key, value value)
   CAMLparam2(key, value);
 
   CAMLreturn(Val_unit);
+}
+
+CAMLprim value Env_IsWoW64Mismatch(value unit)
+{
+  CAMLparam1(unit);
+
+  CAMLreturn(Val_int(0));
 }
 #endif
