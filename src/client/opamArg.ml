@@ -464,8 +464,11 @@ let sh_flag =
 
 let dot_profile_flag =
   mk_opt ["dot-profile"]
-    "FILENAME" "Name of the configuration file to update instead of \
-                $(i,~/.profile) or $(i,~/.zshrc) based on shell detection."
+    "FILENAME"
+    (Printf.sprintf
+      "Name of the configuration file to update instead of \
+       $(i,~%s.profile) or $(i,~%s.zshrc) based on shell detection."
+      Filename.dir_sep Filename.dir_sep)
     (Arg.some filename) None
 
 let repo_kind_flag =
@@ -680,14 +683,19 @@ let init =
   let doc = init_doc in
   let man = [
     `S "DESCRIPTION";
-    `P "The $(b,init) command creates a fresh client state.  This initializes OPAM \
-        configuration in $(i,~/.opam) and configures a default package repository.";
-    `P "Once the fresh client has been created, OPAM will ask the user if he wants \
-        $(i,~/.profile) (or $i,~/.zshrc, depending on his shell) and $(i,~/.ocamlinit) \
-        to be updated. \
-        If $(b,--auto-setup) is used, OPAM will modify the configuration files automatically, \
-        without asking the user. If $(b,--no-setup) is used, OPAM will *NOT* modify \
-        anything outside of $(i,~/.opam).";
+    `P (Printf.sprintf
+          "The $(b,init) command creates a fresh client state.  This initializes OPAM \
+          configuration in $(i,~%s.opam) and configures a default package repository."
+          Filename.dir_sep);
+    `P (Printf.sprintf
+          "Once the fresh client has been created, OPAM will ask the user if he wants \
+          $(i,~%s.profile) (or $i,~%s.zshrc, depending on his shell) and $(i,~%s.ocamlinit) \
+          to be updated. \
+          If $(b,--auto-setup) is used, OPAM will modify the configuration files automatically, \
+          without asking the user. If $(b,--no-setup) is used, OPAM will *NOT* modify \
+          anything outside of $(i,~%s.opam)."
+          (* Oh for positional specifiers in Printf... *)
+          Filename.dir_sep Filename.dir_sep Filename.dir_sep Filename.dir_sep);
     `P "Additional repositories can be added later by using the $(b,opam repository) command.";
     `P "The state of repositories can be synchronized by using $(b,opam update).";
     `P "The user and global configuration files can be setup later by using $(b,opam config setup).";
@@ -897,15 +905,18 @@ let config =
      compiler. The output of this command is meant to be evaluated by a \
      shell, for example by doing $(b,eval `opam config env`).";
     ["setup"]   , `setup   , [],
-    "Configure global and user parameters for OPAM. Use $(b, opam config setup) \
-     to display more options. Use $(b,--list) to display the current configuration \
-     options. You can use this command to automatically update: (i) user-configuration \
-     files such as ~/.profile and ~/.ocamlinit; and (ii) global-configaration files \
-     controlling which shell scripts are loaded on startup, such as auto-completion. \
-     These configuration options can be updated using: $(b,opam config setup --global) \
-     to setup the global configuration files stored in $(b,~/.opam/opam-init/) and \
-     $(b,opam config setup --user) to setup the user ones. \
-     To modify both the global and user configuration, use $(b,opam config setup --all).";
+    (Printf.sprintf
+      "Configure global and user parameters for OPAM. Use $(b, opam config setup) \
+       to display more options. Use $(b,--list) to display the current configuration \
+       options. You can use this command to automatically update: (i) user-configuration \
+       files such as ~%s.profile and ~%s.ocamlinit; and (ii) global-configaration files \
+       controlling which shell scripts are loaded on startup, such as auto-completion. \
+       These configuration options can be updated using: $(b,opam config setup --global) \
+       to setup the global configuration files stored in $(b,%s) and \
+       $(b,opam config setup --user) to setup the user ones. \
+       To modify both the global and user configuration, use $(b,opam config setup --all)."
+       Filename.dir_sep Filename.dir_sep
+       (Filename.concat (Filename.concat (Filename.concat "~" ".opam") "opam-init") ""));
     ["exec"]    , `exec    , ["[--] COMMAND"; "[ARG]..."],
     "Execute $(i,COMMAND) with the correct environment variables. \
      This command can be used to cross-compile between switches using \
@@ -938,12 +949,12 @@ let config =
   let all_doc         = "Enable all the global and user configuration options." in
   let global_doc      = "Enable all the global configuration options." in
   let user_doc        = "Enable all the user configuration options." in
-  let ocamlinit_doc   = "Modify ~/.ocamlinit to make `#use \"topfind\"` works in the toplevel." in
-  let profile_doc     = "Modify ~/.profile (or ~/.zshrc if running zsh) to \
-                         setup an OPAM-friendly environment when starting a new shell." in
+  let ocamlinit_doc   = Printf.sprintf "Modify ~%s.ocamlinit to make `#use \"topfind\"` works in the toplevel." Filename.dir_sep in
+  let profile_doc     = Printf.sprintf "Modify ~%s.profile (or ~%s.zshrc if running zsh) to \
+                         setup an OPAM-friendly environment when starting a new shell." Filename.dir_sep Filename.dir_sep in
   let no_complete_doc = "Do not load the auto-completion scripts in the environment." in
   let no_eval_doc     = "Do not install `opam-switch-eval` to switch & eval using a single command." in
-  let dot_profile_doc = "Select which configuration file to update (default is ~/.profile)." in
+  let dot_profile_doc = Printf.sprintf "Select which configuration file to update (default is ~%s.profile)." Filename.dir_sep in
   let list_doc        = "List the current configuration." in
   let sexp_doc        = "Display environment variables as an s-expression" in
   let inplace_path_doc= "When updating the PATH variable, replace any pre-existing OPAM path \

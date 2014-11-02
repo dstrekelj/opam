@@ -1892,9 +1892,9 @@ let update_ocamlinit () =
         if not (OpamFilename.exists file) then ""
         else OpamFilename.read file in
       if body = "" then
-        OpamGlobals.msg "  Generating ~/.ocamlinit.\n"
+        OpamGlobals.msg "  Generating ~%s.ocamlinit.\n" Filename.dir_sep
       else
-        OpamGlobals.msg "  Updating ~/.ocamlinit.\n";
+        OpamGlobals.msg "  Updating ~%s.ocamlinit.\n" Filename.dir_sep;
       try
         let header =
           "(* Added by OPAM. *)\n\
@@ -1907,9 +1907,9 @@ let update_ocamlinit () =
         close_out oc;
       with e ->
         OpamMisc.fatal e;
-        OpamSystem.internal_error "Cannot write ~/.ocamlinit."
+        OpamSystem.internal_error "Cannot write ~%s.ocamlinit." Filename.dir_sep
   ) else
-    OpamGlobals.msg "  ~/.ocamlinit is already up-to-date.\n"
+    OpamGlobals.msg "  ~%s.ocamlinit is already up-to-date.\n" Filename.dir_sep
 
 let string_of_env_update t shell updates =
   let fenv = resolve_variable t OpamVariable.Map.empty in
@@ -2111,7 +2111,7 @@ let display_setup t shell dot_profile =
       | `no        -> ok
       | `yes       -> not_set
       | `otherroot -> error in
-    [ ("~/.ocamlinit"                   , ocamlinit_status);
+    [ (Printf.sprintf "~%s.ocamlinit"  Filename.dir_sep, ocamlinit_status);
       (OpamFilename.prettify dot_profile, dot_profile_status); ]
   in
   let init_file = init_file shell in
@@ -2176,14 +2176,14 @@ let print_env_warning_at_init t user =
     in
     let ocamlinit_string =
       if not user.ocamlinit then "" else
-        OpamGlobals.colorise `yellow "3." ^
+        OpamGlobals.colorise `yellow "3." ^ Printf.sprintf
         " To avoid issues related to non-system installations of `ocamlfind`\n\
-        \   add the following lines to ~/.ocamlinit (create it if necessary):\n\
+        \   add the following lines to ~%s.ocamlinit (create it if necessary):\n\
          \n\
         \      let () =\n\
         \        try Topdirs.dir_directory (Sys.getenv \"OCAML_TOPLEVEL_PATH\")\n\
         \        with Not_found -> ()\n\
-        \      ;;\n\n"
+        \      ;;\n\n" Filename.dir_sep
     in
     let line =
       OpamGlobals.colorise `cyan
@@ -2261,7 +2261,7 @@ let update_setup_interactive t shell dot_profile =
   end;
 
   match OpamGlobals.read
-      "In normal operation, OPAM only alters files within ~/.opam.\n\
+      "In normal operation, OPAM only alters files within ~%s.opam.\n\
        \n\
        During this initialisation, you can allow OPAM to add information to two\n\
        other files for best results. You can also make these additions manually\n\
@@ -2286,14 +2286,16 @@ let update_setup_interactive t shell dot_profile =
        \   opam config setup -a\n\
        \n\
       \n\
-       Do you want OPAM to modify %s and ~/.ocamlinit?\n\
+       Do you want OPAM to modify %s and ~%s.ocamlinit?\n\
        (default is 'no', use 'f' to name a file other than %s)\n\
       \    [N/y/f]"
+      Filename.dir_sep
       (OpamGlobals.colorise `cyan @@ OpamFilename.prettify dot_profile)
       (OpamGlobals.colorise `bold @@ string_of_shell shell)
       (source t ~shell (init_file shell))
-      (OpamGlobals.colorise `cyan @@ "~/.ocamlinit")
+      (OpamGlobals.colorise `cyan @@ Printf.sprintf "~%s.ocamlinit" Filename.dir_sep)
       (OpamFilename.prettify dot_profile)
+      Filename.dir_sep
       (OpamFilename.prettify dot_profile)
   with
   | Some ("y" | "Y" | "yes"  | "YES" ) -> update (Some dot_profile)
