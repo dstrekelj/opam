@@ -688,8 +688,8 @@ let init =
           configuration in $(i,~%s.opam) and configures a default package repository."
           Filename.dir_sep);
     `P (Printf.sprintf
-          "Once the fresh client has been created, OPAM will ask the user if he wants \
-          $(i,~%s.profile) (or $i,~%s.zshrc, depending on his shell) and $(i,~%s.ocamlinit) \
+          "Once the fresh client has been created, OPAM will ask whether the user wants \
+          $(i,~%s.profile) (or $i,~%s.zshrc, depending on the shell) and $(i,~%s.ocamlinit) \
           to be updated. \
           If $(b,--auto-setup) is used, OPAM will modify the configuration files automatically, \
           without asking the user. If $(b,--no-setup) is used, OPAM will *NOT* modify \
