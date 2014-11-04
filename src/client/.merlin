@@ -1,0 +1,8 @@
+S ..\core
+B ..\core
+S ..\repositories
+B ..\repositories
+S ..\solver
+B ..\solver
+
+REC

@@ -1,0 +1,10 @@
+S ..\core
+B ..\core
+S ..\solver
+B ..\solver
+S ..\client
+B ..\client
+S ..\repositories
+B ..\repositories
+
+REC
