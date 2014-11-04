@@ -925,7 +925,7 @@ let create_system_compiler_description root = function
           OpamCompiler.system version
           (if not !OpamGlobals.no_base_packages then base_packages else [])
           [ "CAML_LD_LIBRARY_PATH", "=",
-            "%{lib}%/stublibs" ^ String.make 1 OpamSystem.path_sep ^
+            Printf.sprintf "%%{lib}%%%sstublibs" Filename.dir_sep ^ String.make 1 OpamSystem.path_sep ^
             Filename.concat dir "stublibs" ] in
     OpamFile.Comp.write comp f
 
