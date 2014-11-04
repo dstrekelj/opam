@@ -515,6 +515,23 @@ type regroot = HKEY_CLASSES_ROOT
              | HKEY_LOCAL_MACHINE
              | HKEY_USERS
 
+let string_of_regroot = function
+| HKEY_CLASSES_ROOT  -> "HKEY_CLASSES_ROOT"
+| HKEY_CURRENT_USER  -> "HKEY_CURRENT_USER"
+| HKEY_LOCAL_MACHINE -> "HKEY_LOCAL_MACHINE"
+| HKEY_USERS         -> "HKEY_USERS"
+
+let regroot_of_string = function
+| "HKCR"
+| "HKEY_CLASSES_ROOT"  -> HKEY_CLASSES_ROOT
+| "HKCU"
+| "HKEY_CURRENT_USER"  -> HKEY_CURRENT_USER
+| "HKLM"
+| "HKEY_LOCAL_MACHINE" -> HKEY_LOCAL_MACHINE
+| "HKU"
+| "HKEY_USERS"         -> HKEY_USERS
+| _                    -> failwith "regroot_of_string"
+
 external writeRegistry : regroot -> string -> string -> 'a registry -> 'a -> unit = "Env_WriteRegistry"
 
 type ('a, 'b, 'c) winmessage =
