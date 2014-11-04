@@ -54,6 +54,8 @@ src/opam-admin.top.exe
 src/opam-installer.exe
 src/opam-check
 src/opamlfind
+src/opam-putenv.exe
+src/dllopam-core_stubs.dll
 ._d
 ._ncdi
 ._bcdi
