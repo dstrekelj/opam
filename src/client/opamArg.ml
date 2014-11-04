@@ -1895,7 +1895,7 @@ let check_and_run_external_commands () =
 
 let run default commands =
   Sys.catch_break true;
-  let _ = Sys.signal Sys.sigpipe (Sys.Signal_handle (fun _ -> ())) in
+  let _ = if OpamGlobals.os () <> OpamGlobals.Win32 then ignore (Sys.signal Sys.sigpipe (Sys.Signal_handle (fun _ -> ()))) in
   try
     check_and_run_external_commands ();
     match Term.eval_choice ~catch:false default commands with
