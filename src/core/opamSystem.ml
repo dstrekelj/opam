@@ -278,15 +278,52 @@ let reset_env = lazy (
   Array.of_list env
 )
 
-let command_exists ?(env=default_env) name =
-  let cmd, args = "/bin/sh", ["-c"; Printf.sprintf "command -v %s" name] in
+let command_exists ?(env=default_env) =
+  if OpamGlobals.os () = OpamGlobals.Win32 then
+    fun name ->
+      (* XXX This is ignoring env at the moment *)
+      let search =
+        let path =
+          try
+            Sys.getenv "PATH"
+          with Not_found -> "" in
+        let length = String.length path in
+        let rec f acc index current last normal =
+          if index = length
+          then let current = current ^ String.sub path last (index - last) in
+               if current <> "" then current::acc else acc
+          else let c = path.[index]
+               and next = succ index in
+               if c = ';' && normal || c = '"' then
+                 let current = current ^ String.sub path last (index - last) in
+                 if c = '"' then
+                   f acc next current next (not normal)
+                 else
+                   let acc = if current = "" then acc else current::acc in
+                   f acc next "" next true
+               else
+                 f acc next current last normal in
+        f [] 0 "" 0 true in
+      let name = if Filename.check_suffix name ".exe" then name else name ^ ".exe" in
+      List.exists (fun path -> let name = Filename.concat path name in Sys.file_exists name && (Unix.stat name).Unix.st_kind = Unix.S_REG) search
+  else
+    fun name ->
+  let cmd, args = (if OpamGlobals.os () = OpamGlobals.Win32 then "sh" else "/bin/sh"), ["-c"; Printf.sprintf "command -v %s" name] in
+  let env =
+    if OpamGlobals.os () = OpamGlobals.Win32 then env else
+    let found = ref false in
+    Array.iteri (fun i x -> if String.length x > 4 && String.sub x 0 5 = "PATH=" then begin
+                  found := true;
+                  env.(i) <- "PATH=/usr/local/bin:/usr/bin:" ^ String.map (function ';' -> ':' | c -> c) (String.sub x 5 (String.length x - 5));
+                  Printf.printf "Mapped PATH to %s\nLooking for %s\n%!" env.(i) name end) env;
+    if not !found then (Printf.printf "NO PATH looking for %s!\n%s\n%!" name (try Sys.getenv "PATH" with Not_found -> "NO, REALLY!"); Array.append env [| "PATH=/usr/local/bin:/usr/bin:" ^ String.map (function ';' -> ':' | c -> c) (try Sys.getenv "PATH" with Not_found -> "") |]) else env (* XXX TODO *) in
   let r = OpamProcess.run ~env ~name:(temp_file "command") ~verbose:false cmd args in
   OpamProcess.clean_files r;
   if OpamProcess.is_success r then
     let is_external_cmd s = String.contains s '/' in
     match r.OpamProcess.r_stdout with 
       cmdname::_ -> (* check that we have permission to execute the command *)
-	if is_external_cmd cmdname then 
+	if OpamGlobals.os () <> OpamGlobals.Win32 && is_external_cmd cmdname then
 	  (try 
 	    let open Unix in 
 	    let uid = getuid() and groups = Array.to_list(getgroups()) in

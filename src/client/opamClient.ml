@@ -1073,7 +1073,8 @@ module API = struct
         | `ask -> OpamState.update_setup_interactive t shell dot_profile
         | `no  -> false
         | `yes ->
-          let global = { complete = true; switch_eval = true } in
+          let state = (OpamMisc.os () <> OpamMisc.Win32) in
+          let global = { complete = state; switch_eval = state } in
           OpamState.update_setup t (Some user) (Some global);
           true in
       if updated then OpamState.print_env_warning_at_switch t
@@ -1115,7 +1116,7 @@ module API = struct
           OpamGlobals.warning
             "Recommended external solver %s not found."
             (OpamGlobals.colorise `bold (OpamGlobals.get_external_solver ()));
-        let advised_deps = [!OpamGlobals.makecmd(); "m4"; "cc"] in
+        let advised_deps = !OpamGlobals.makecmd() :: "m4" :: (if OpamMisc.os () = OpamMisc.Win32 then [] else [ "cc" ]) in
         (match List.filter (not @* check_external_dep) advised_deps with
          | [] -> ()
          | missing ->

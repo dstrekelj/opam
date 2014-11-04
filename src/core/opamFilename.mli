@@ -133,6 +133,9 @@ val remove: t -> unit
 (** Removes everything in [filename] if existed, then write [contents] instead. *)
 val write: t -> string -> unit
 
+(** Windows-only: write a registry value pointed to by [filename] *)
+val writeRegistry: t -> 'a OpamMisc.registry -> 'a -> unit
+
 (** see [Sys.file_exists] *)
 val exists: t -> bool
 

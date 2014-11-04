@@ -95,6 +95,7 @@ let string_of_shell = function
   | `zsh  -> "zsh"
   | `sh   -> "sh"
   | `bash -> "bash"
+  | `cmd  -> "cmd"
 
 let pos_null = OpamFilename.of_string "",-1,-1
 

@@ -462,6 +462,9 @@ let csh_flag =
 let sh_flag =
   mk_flag ["sh"] "Use sh-compatible mode for configuring OPAM."
 
+let cmd_flag =
+  mk_flag ["cmd"] "Use Command Processor-compatible mode for configuring OPAM (Windows-only)."
+
 let dot_profile_flag =
   mk_opt ["dot-profile"]
     "FILENAME"
@@ -713,7 +716,7 @@ let init =
   let auto_setup = mk_flag ["a";"auto-setup"] "Automatically setup all the global and user configuration options for OPAM." in
   let init global_options
       build_options repo_kind repo_name repo_address compiler jobs
-      no_setup auto_setup sh csh zsh fish dot_profile_o =
+      no_setup auto_setup sh csh zsh fish cmd dot_profile_o =
     (* Create the dir in current directory so that it can be made absolute *)
     OpamFilename.mkdir global_options.root;
     apply_global_options global_options;
@@ -733,12 +736,13 @@ let init =
       else if csh then `csh
       else if zsh then `zsh
       else if fish then `fish
+      else if cmd then `cmd
       else OpamMisc.guess_shell_compat () in
     let dot_profile = init_dot_profile shell dot_profile_o in
     Client.init repository compiler ~jobs shell dot_profile update_config in
   Term.(pure init
     $global_options $build_options $repo_kind_flag $repo_name $repo_address $compiler $jobs
-    $no_setup $auto_setup $sh_flag $csh_flag $zsh_flag $fish_flag $dot_profile_flag),
+    $no_setup $auto_setup $sh_flag $csh_flag $zsh_flag $fish_flag $cmd_flag $dot_profile_flag),
   term_info "init" ~doc ~man
 
 (* LIST *)
@@ -985,6 +989,7 @@ let config =
         (match OpamMisc.guess_shell_compat () with
          | `csh                -> true , false
          | `fish               -> false, true
+         | `cmd                -> false, false
          | `sh | `bash | `zsh  -> false, false)
       | _ -> csh, fish
     in

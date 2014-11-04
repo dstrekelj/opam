@@ -217,6 +217,12 @@ let open_out filename =
 let write filename raw =
   OpamSystem.write (to_string filename) raw
 
+let writeRegistry filename =
+  let (root, filename) =
+    let i = String.index filename.dirname '\\' in
+    (String.sub filename.dirname 0 i, {filename with dirname = String.sub filename.dirname (i + 1) (String.length filename.dirname - i - 1)}) in
+  OpamMisc.writeRegistry (OpamMisc.regroot_of_string root) filename.dirname filename.basename
+
 let remove filename =
   OpamSystem.remove_file (to_string filename)
 

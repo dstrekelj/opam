@@ -287,7 +287,7 @@ type pin_option =
 type pin_kind = [`version|`git|`darcs|`hg|`local]
 
 (** Shell compatibility modes *)
-type shell = [`fish|`csh|`zsh|`sh|`bash]
+type shell = [`fish|`csh|`zsh|`sh|`bash|`cmd]
 
 (** Global configuration option *)
 type global_config = {

@@ -256,6 +256,21 @@ val getenv: string -> string
 (** Lazy environment *)
 val env: unit -> (string * string) list
 
+(** Windows-only: registry roots *)
+type regroot = HKEY_CLASSES_ROOT
+             | HKEY_CURRENT_USER
+             | HKEY_LOCAL_MACHINE
+             | HKEY_USERS
+
+(** Windows-only: registry values *)
+type 'a registry =
+  | REG_SZ : string registry
+
+(** Windows-only: write a value to the registry *)
+external writeRegistry : regroot -> string -> string -> 'a registry -> 'a -> unit = "Env_WriteRegistry"
+
+val regroot_of_string : string -> regroot
+
 (** Windows-only: update the user's persistent HOME environment variable *)
 val persistHomeDirectory : string -> unit
 
@@ -307,10 +322,10 @@ val uname_s: unit -> string option
 val uname_m: unit -> string option
 
 (** Guess the shell compat-mode *)
-val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish]
+val guess_shell_compat: unit -> [`csh|`zsh|`sh|`bash|`fish|`cmd]
 
 (** Guess the location of .profile *)
-val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish] -> string
+val guess_dot_profile: [`csh|`zsh|`sh|`bash|`fish|`cmd] -> string
 
 (** Like Pervasives.at_exit but with the possibility to call manually
     (eg. before exec()) *)

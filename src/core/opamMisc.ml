@@ -635,11 +635,15 @@ let shell_of_string = function
   | "zsh"  -> `zsh
   | "bash" -> `bash
   | "fish" -> `fish
-  | _      -> `sh
+  | _      ->
+      if os () = Win32 then
+        `cmd
+    else
+      `sh
 
 let guess_shell_compat () =
   try shell_of_string (Filename.basename (getenv "SHELL"))
-  with Not_found -> `sh
+  with Not_found -> if os () = Win32 then `cmd else `sh
 
 let guess_dot_profile shell =
   let home f =
@@ -655,6 +659,10 @@ let guess_dot_profile shell =
       bash_profile
     else
       bashrc
+  | `cmd ->
+      (* The Command Processor doesn't have an equivalent of .profile, but we can update AutoRun.
+       *)
+      "HKCU\\Software\\Microsoft\\Command Processor\\AutoRun"
   | _     -> home ".profile"
 
 let prettify_path s =
