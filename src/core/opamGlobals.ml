@@ -112,78 +112,87 @@ external setConsoleTextAttribute : handle -> int -> unit = "Console_SetConsoleTe
  *)
 
 let win32_msg ch msg =
-  let hConsoleOutput = getStdHandle (-11) (* XXX Error handling *) in
-  let {attributes} = getConsoleScreenBufferInfo hConsoleOutput in
-  let background = (attributes land 0b1110000) lsr 4 in
-  let length = String.length msg in
-  let executeCode =
-    let color = ref (attributes land 0b1111) in
-    let blend ?(inheritbold = true) bits =
-      let bits =
-        if inheritbold then
-          (!color land 0b1000) lor (bits land 0b111)
-        else
-          bits in
-      let result = (attributes land (lnot 0b1111)) lor (bits land 0b1000) lor ((bits land 0b111) lxor background) in
-      color := (result land 0b1111);
-      result in
-    fun code ->
-      let l = String.length code in
-      assert (l > 0 && code.[0] = '[');
-      let attributes =
-        match String.sub code 1 (l - 1) with
-          "01" ->
-            blend ~inheritbold:false (!color lor 0b1000)
-        | "04" ->
-            (* Don't have underline, so change the background *)
-            (attributes land (lnot 0b11111111)) lor 0b01110000
-        | "30" ->
-            blend 0b000
-        | "31" ->
-            blend 0b100
-        | "32" ->
-            blend 0b010
-        | "33" ->
-            blend 0b110
-        | "1;34" ->
-            blend ~inheritbold:false 0b1001
-        | "35" ->
-            blend 0b101
-        | "36" ->
-            blend 0b011
-        | "37" ->
-            blend 0b111
-        | "" ->
-            blend ~inheritbold:false 0b0111
+  try
+    let hConsoleOutput = getStdHandle (-11) in
+    let {attributes} =
+      try
+        getConsoleScreenBufferInfo hConsoleOutput
+      with Not_found ->
+        color := false;
+        Printf.fprintf ch "%s" msg;
+        raise Exit
+    in
+    let background = (attributes land 0b1110000) lsr 4 in
+    let length = String.length msg in
+    let executeCode =
+      let color = ref (attributes land 0b1111) in
+      let blend ?(inheritbold = true) bits =
+        let bits =
+          if inheritbold then
+            (!color land 0b1000) lor (bits land 0b111)
+          else
+            bits in
+        let result = (attributes land (lnot 0b1111)) lor (bits land 0b1000) lor ((bits land 0b111) lxor background) in
+        color := (result land 0b1111);
+        result in
+      fun code ->
+        let l = String.length code in
+        assert (l > 0 && code.[0] = '[');
+        let attributes =
+          match String.sub code 1 (l - 1) with
+            "01" ->
+              blend ~inheritbold:false (!color lor 0b1000)
+          | "04" ->
+              (* Don't have underline, so change the background *)
+              (attributes land (lnot 0b11111111)) lor 0b01110000
+          | "30" ->
+              blend 0b000
+          | "31" ->
+              blend 0b100
+          | "32" ->
+              blend 0b010
+          | "33" ->
+              blend 0b110
+          | "1;34" ->
+              blend ~inheritbold:false 0b1001
+          | "35" ->
+              blend 0b101
+          | "36" ->
+              blend 0b011
+          | "37" ->
+              blend 0b111
+          | "" ->
+              blend ~inheritbold:false 0b0111
           | _ -> assert false in
         setConsoleTextAttribute hConsoleOutput attributes in
-  let rec f index start inCode =
-    if index < length
-    then let c = msg.[index] in
-         if c = '\027' then begin
-           assert (not inCode);
-           let fragment = String.sub msg start (index - start) in
-           let index = succ index in
-           if fragment <> "" then
-             Printf.fprintf ch "%s%!" fragment;
-           f index index true end
-         else
-           if inCode && c = 'm' then
+    let rec f index start inCode =
+      if index < length
+      then let c = msg.[index] in
+           if c = '\027' then begin
+             assert (not inCode);
              let fragment = String.sub msg start (index - start) in
              let index = succ index in
-             executeCode fragment;
-             f index index false
+             if fragment <> "" then
+               Printf.fprintf ch "%s%!" fragment;
+             f index index true end
            else
-             f (succ index) start inCode
-    else let fragment = String.sub msg start (index - start) in
-         if fragment <> "" then
-           if inCode then
-             executeCode fragment
+             if inCode && c = 'm' then
+               let fragment = String.sub msg start (index - start) in
+               let index = succ index in
+               executeCode fragment;
+               f index index false
+             else
+               f (succ index) start inCode
+      else let fragment = String.sub msg start (index - start) in
+           if fragment <> "" then
+             if inCode then
+               executeCode fragment
+             else
+               Printf.fprintf ch "%s%!" fragment
            else
-             Printf.fprintf ch "%s%!" fragment
-         else
-           flush ch in
-  f 0 0 false
+             flush ch in
+    f 0 0 false
+  with Exit -> ()
 
 (*
  * For Win32 colour support, all output should go through this function

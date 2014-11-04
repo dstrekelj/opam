@@ -24,7 +24,7 @@ let slog = OpamGlobals.slog
 type state = {
   remote_dir          : dirname;
   local_dir           : dirname;
-  remote_index_archive: filename;
+  remote_index_archive: OpamFilename.uri OpamFilename.link;
   local_index_archive : filename;
   local_files         : filename_set;
   remote_local        : filename filename_map;
@@ -50,10 +50,10 @@ let make_state ~download_index repo =
     List.assoc repo.repo_address !state_cache
   else (
     let repo_address = OpamFilename.raw_dir (fst repo.repo_address) in
-    let remote_index_file = repo_address // "urls.txt" in
+    let remote_index_file = OpamFilename.uri repo_address "urls.txt" in
     let local_index_file = index_file repo.repo_root in
     let local_index_file_save = index_file_save repo.repo_root in
-    let remote_index_archive = repo_address // "index.tar.gz" in
+    let remote_index_archive = OpamFilename.uri repo_address "index.tar.gz" in
     let local_index_archive = repo.repo_root // "index.tar.gz" in
     let index =
       if download_index then (
@@ -63,7 +63,7 @@ let make_state ~download_index repo =
 	  OpamGlobals.msg "[%s] Downloading %s\n"
 	    (OpamGlobals.colorise `blue
                (OpamRepositoryName.to_string repo.repo_name))
-	    (OpamFilename.to_string remote_index_file);
+	    (OpamFilename.uri_to_string remote_index_file);
           let file =
             OpamFilename.download ~compress:true ~overwrite:false
               remote_index_file repo.repo_root in
@@ -145,7 +145,7 @@ module B = struct
 	OpamGlobals.msg "[%s] Downloading %s\n"
 	  (OpamGlobals.colorise `blue
              (OpamRepositoryName.to_string repo.repo_name))
-	  (OpamFilename.to_string state.remote_index_archive);
+	  (OpamFilename.uri_to_string state.remote_index_archive);
         let file =
           OpamFilename.download ~overwrite:true
             state.remote_index_archive state.local_dir in
@@ -162,7 +162,7 @@ module B = struct
 
   let curl ~remote_file ~local_file =
     log "curl";
-    log "dowloading %a" (slog OpamFilename.to_string) remote_file;
+    log "dowloading %a" (slog OpamFilename.uri_to_string) remote_file;
     (* OpamGlobals.msg "Downloading %s\n" (OpamFilename.to_string remote_file); *)
     OpamFilename.download_as ~overwrite:true remote_file local_file
 
@@ -200,7 +200,7 @@ module B = struct
             (OpamGlobals.colorise `blue
                (OpamRepositoryName.to_string repo.repo_name))
             (OpamFilename.prettify remote_file);
-          curl ~remote_file ~local_file
+          curl ~remote_file:(OpamFilename.uri_of_file remote_file) ~local_file
         ) new_files;
     )
 
@@ -210,6 +210,7 @@ module B = struct
       (slog OpamFilename.Dir.to_string) dirname
       remote_url;
     let filename = OpamFilename.of_string remote_url in
+    let uri = OpamFilename.uri_of_file filename in
     let base = OpamFilename.basename filename in
     let local_file = OpamFilename.create dirname base in
     let check_sum f = match checksum with
@@ -243,7 +244,7 @@ module B = struct
         (OpamGlobals.colorise `green (OpamPackage.to_string package))
         (OpamFilename.to_string filename);
       try
-        let local_file = OpamFilename.download ~overwrite:true filename dirname in
+        let local_file = OpamFilename.download ~overwrite:true uri dirname in
         OpamRepository.check_digest local_file checksum;
         Result (F local_file)
       with e ->
@@ -253,6 +254,7 @@ module B = struct
 
   let pull_archive repo filename =
     log "pull-archive";
+    let uri = OpamFilename.uri_of_file filename in
     let state = make_state ~download_index:false repo in
     try
       let local_file = OpamFilename.Map.find filename state.remote_local in
@@ -263,7 +265,7 @@ module B = struct
 	  (OpamGlobals.colorise `blue
              (OpamRepositoryName.to_string repo.repo_name))
 	  (OpamFilename.prettify filename);
-	curl ~remote_file:filename ~local_file;
+	curl ~remote_file:uri ~local_file;
         Result local_file
       )
     with Not_found ->

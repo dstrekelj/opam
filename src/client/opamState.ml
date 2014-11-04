@@ -2420,7 +2420,7 @@ let install_compiler t ~quiet:_ switch compiler =
           );
         let patches = OpamFile.Comp.patches comp in
         let patches = List.map (fun f ->
-            OpamFilename.download ~overwrite:true f build_dir
+            OpamFilename.download ~overwrite:true (OpamFilename.uri_of_file f) build_dir
           ) patches in
         List.iter (fun f -> OpamFilename.patch f build_dir) patches;
         OpamGlobals.msg "Now compiling OCaml. This may take a while, \

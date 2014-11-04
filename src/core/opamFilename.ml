@@ -125,29 +125,63 @@ let (/) d1 s2 =
   raw_dir (Filename.concat s1 s2)
 
 type t = {
+  separator: string;
   dirname:  Dir.t;
   basename: Base.t;
 }
+
+type file
+type uri
+type 'a link = t
 
 let create dirname basename =
   let b1 = Filename.dirname (Base.to_string basename) in
   let b2 = Base.of_string (Filename.basename (Base.to_string basename)) in
   if basename = b2 then
-    { dirname; basename }
+    { separator = Filename.dir_sep; dirname; basename }
   else
-    { dirname = dirname / b1; basename = b2 }
+    { separator = Filename.dir_sep; dirname = dirname / b1; basename = b2 }
+
+let back_to_forward = String.map (function '\\' -> '/' | c -> c)
+
+let uri =
+  if OpamMisc.os () = OpamMisc.Win32 then
+    fun dirname basename ->
+      let {dirname; basename} = create dirname basename in
+      {separator = "/"; dirname = back_to_forward dirname; basename}
+  else
+    create
+
+let uri_of_file =
+  if OpamMisc.os () = OpamMisc.Win32 then
+    fun ({separator; dirname; basename} as file) ->
+      if separator = "/"
+      then file
+      else {separator = "/"; dirname = back_to_forward dirname; basename}
+  else
+    fun x -> x
+
+let file_of_uri uri = uri
 
 let of_basename basename =
   let dirname = Dir.of_string "." in
-  { dirname; basename }
+  { separator = Filename.dir_sep; dirname; basename }
 
 let raw str =
   let dirname = raw_dir (Filename.dirname str) in
   let basename = Base.of_string (Filename.basename str) in
   create dirname basename
 
+let gen_concat s d b =
+  if String.length d = 0 then
+    b
+  else
+    d ^ s ^ b
+
 let to_string t =
-  Filename.concat (Dir.to_string t.dirname) (Base.to_string t.basename)
+  gen_concat t.separator (Dir.to_string t.dirname) (Base.to_string t.basename)
+
+let uri_to_string = to_string
 
 let digest t =
   Digest.to_hex (Digest.file (to_string t))
@@ -162,8 +196,9 @@ let of_string s =
   let dirname = Filename.dirname s in
   let basename = Filename.basename s in
   {
-    dirname  = Dir.of_string dirname;
-    basename = Base.of_string basename;
+    separator = Filename.dir_sep;
+    dirname   = Dir.of_string dirname;
+    basename  = Base.of_string basename;
   }
 
 let dirname t = t.dirname
