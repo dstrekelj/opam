@@ -673,6 +673,39 @@ let download_command =
         internal_error "Cannot find curl nor wget."
   )
 
+(*
+ * Debugging option - set this to Some directory and OPAM will look
+ * for the file cache in this directory. cache should contain a list of URLs
+ * and if this matches, then really_download will cp the file from this directory
+ * instead of downloading it
+ *)
+let cache_directory = None
+
+let check_cache =
+  match cache_directory with
+  | Some directory when Sys.file_exists directory && (Unix.stat directory).Unix.st_kind = Unix.S_DIR && Sys.file_exists (Filename.concat directory "cache") ->
+      (*
+       * Switch all \ to / for maximum Windows-compatibility.
+       *)
+      begin
+        let directory = String.map (function '\\' -> '/' | c -> c) directory
+        and cache = Filename.concat directory "cache" in
+        fun src dst ->
+          let c = open_in cache in
+            try
+              while true do
+                let line = input_line c in
+                if src = line then
+                  (commands [["cp"; directory ^ "/" ^ Filename.basename src; dst]]; close_in c; raise Exit)
+              done;
+              ""
+            with Exit -> dst
+               | End_of_file ->
+                   close_in c;
+                   ""
+      end
+  | _ -> fun _ _ -> ""
+
 let really_download ~overwrite ?(compress=false) ~src ~dst =
   let download = (Lazy.force download_command) in
   let aux () =
@@ -689,12 +722,16 @@ let really_download ~overwrite ?(compress=false) ~src ~dst =
       ];
       dst
   in
-  try with_tmp_dir (fun tmp_dir -> in_dir tmp_dir aux)
-  with
-  | Internal_error s as e -> OpamGlobals.error "%s" s; raise e
-  | e ->
-    OpamMisc.fatal e;
-    internal_error "Cannot download %s, please check your connection settings." src
+  let res = check_cache src dst in
+  if res = "" then
+    try with_tmp_dir (fun tmp_dir -> in_dir tmp_dir aux)
+    with
+    | Internal_error s as e -> OpamGlobals.error "%s" s; raise e
+    | e ->
+      OpamMisc.fatal e;
+      internal_error "Cannot download %s, please check your connection settings." src
+  else
+    res
 
 let download ~overwrite ?compress ~filename:src ~dst:dst =
   if dst = src then
