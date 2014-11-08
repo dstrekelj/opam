@@ -21,17 +21,38 @@
 
 int main(int argc, char *argv[], char *envp[])
 {
-  if (argc < 4 || (argc & 1) != 0)
+  if (argc != 2)
   {
     printf("Invalid command line: this utility is an internal part of OPAM\n");
   }
   else
   {
     DWORD pid = atoi(argv[1]);
-    int i;
-    for (i = 2; i < argc; i += 2)
+    BOOL running = TRUE;
+    size_t keysize = 8192;
+    char* key = (char*)malloc(keysize);
+    size_t valuesize = 8192;
+    char* value = (char*)malloc(valuesize);
+
+    while (running)
     {
-      InjectSetEnvironmentVariable(pid, argv[i], argv[i + 1]);
+      if (scanf("%[^\r\n]\r\n", key))
+      {
+        if (strcmp(key, "::QUIT") && scanf("%[^\r\n]\r\n", value))
+        {
+          InjectSetEnvironmentVariable(pid, key, (value + 1));
+        }
+        else
+        {
+          running = FALSE;
+        }
+      }
+      else
+      {
+        running = FALSE;
+      }
     }
+    free(key);
+    free(value);
   }
 }

@@ -488,10 +488,21 @@ let parent_putenv =
      *)
     let putenv_exe = Filename.concat (Filename.dirname Sys.executable_name) "opam-putenv.exe" in
     let ppid = string_of_int ppid in
+    let ctrl = ref stdout in
     if Sys.file_exists putenv_exe then
       fun key value ->
-        let pid = Unix.create_process putenv_exe [| putenv_exe; ppid; key; value |] Unix.stdin Unix.stdout Unix.stderr in
-        fst (Unix.waitpid [] pid) = 0
+        if !ctrl = stdout then begin
+          let (inCh, outCh) = Unix.pipe () in
+          let _ = (Unix.create_process putenv_exe [| putenv_exe; ppid |] inCh Unix.stdout Unix.stderr) in
+          ctrl := (Unix.out_channel_of_descr outCh);
+          set_binary_mode_out !ctrl true;
+        end;
+        output_string !ctrl (key ^ "\r\n");
+        flush !ctrl;
+        output_string !ctrl ("V" ^ value ^ "\r\n");
+        flush !ctrl;
+        if key = "::QUIT" then ctrl := stdout;
+        true
     else
       let shownWarning = ref false in
       fun _ _ ->

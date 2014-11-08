@@ -24,8 +24,10 @@ typedef LRESULT (WINAPI *SETENVIRONMENTVARIABLE)(LPCTSTR,LPCTSTR);
  */
 typedef struct {
   SETENVIRONMENTVARIABLE SetEnvironmentVariable;
+  /* @@DRA Maximum length of the name of an environment variable is probably defined in MSDN */
   TCHAR lpName[MAX_PATH + 1];
-  TCHAR lpValue[MAX_PATH + 1];
+  /* @@DRA As is the maximum possible value for the variable itself */
+  TCHAR lpValue[4096];
   BOOL result;
 } INJDATA, *PINJDATA;
 
