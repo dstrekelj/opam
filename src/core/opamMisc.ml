@@ -513,7 +513,8 @@ let parent_putenv =
         end else
           false
   else
-    parent_putenv_stub
+    function "::QUIT" -> fun _ -> true
+      | key -> parent_putenv_stub key
 
 type 'a registry =
   | REG_SZ : string registry
