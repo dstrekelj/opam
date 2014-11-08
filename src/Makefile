@@ -179,8 +179,8 @@ SRC_client = \
   opamState.ml \
   opamAction.ml \
   opamSolution.ml \
-  opamSwitchCommand.ml \
   opamConfigCommand.ml \
+  opamSwitchCommand.ml \
   opamRepositoryCommand.ml \
   opamPinCommand.ml \
   opamClient.ml

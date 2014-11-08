@@ -1077,7 +1077,13 @@ module API = struct
           let global = { complete = state; switch_eval = state } in
           OpamState.update_setup t (Some user) (Some global);
           true in
-      if updated then OpamState.print_env_warning_at_switch t
+      if shell = `cmd then
+        OpamConfigCommand.set_cmd_env (OpamState.get_opam_env ~force_path:false t);
+      if updated then
+        if shell <> `cmd then
+          OpamState.print_env_warning_at_switch t
+        else
+          ()
       else OpamState.print_env_warning_at_init t user in
 
     if OpamFilename.exists config_f then (

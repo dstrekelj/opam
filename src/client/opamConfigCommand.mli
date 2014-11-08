@@ -41,3 +41,6 @@ val setup_list: shell -> filename -> unit
 
 (** Execute a command in a subshell *)
 val exec: inplace_path:bool -> string list -> unit
+
+(** Set the environment in the parent process (Windows-only) *)
+val set_cmd_env : env -> unit

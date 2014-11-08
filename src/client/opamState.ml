@@ -2228,6 +2228,7 @@ let up_to_date_env t =
 let print_env_warning_at_init t user =
   if up_to_date_env t then ()
   else
+    let env_needed = (user.shell <> `cmd) in
     let profile_string = match user.dot_profile with
       | None -> ""
       | Some f ->
@@ -2244,7 +2245,7 @@ let print_env_warning_at_init t user =
             \   for example, by running:\n\
              \n\
             \      reg add \"HKCU\\Software\\Microsoft\\Command Processor\" /v AutoRun /d \"%s\"\n\n"
-            (OpamGlobals.colorise `yellow "2.")
+            (OpamGlobals.colorise `yellow (if env_needed then "2." else "1."))
             command command
         else
           Printf.sprintf
@@ -2252,13 +2253,12 @@ let print_env_warning_at_init t user =
             \   line to your profile file (for instance %s):\n\
              \n\
             \      %s\n"
-            (OpamGlobals.colorise `yellow "2.")
+            (OpamGlobals.colorise `yellow (if env_needed then "2." else "1."))
             (OpamFilename.prettify f)
-            (source t ~shell:user.shell (init_file user.shell))
-    in
+            (source t ~shell:user.shell (init_file user.shell)) in
     let ocamlinit_string =
       if not user.ocamlinit then "" else
-        OpamGlobals.colorise `yellow "3." ^ Printf.sprintf
+        OpamGlobals.colorise `yellow (if env_needed then "3." else "2.") ^ Printf.sprintf
         " To avoid issues related to non-system installations of `ocamlfind`\n\
         \   add the following lines to ~%s.ocamlinit (create it if necessary):\n\
          \n\
@@ -2269,17 +2269,17 @@ let print_env_warning_at_init t user =
     in
     let line =
       OpamGlobals.colorise `cyan
-        "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-="
-    in
+        "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" in
+    let env_line = Printf.sprintf
+       "%s To configure OPAM in the current shell session, you need to run:\n\
+       \n\
+       \      %s\n"
+      (OpamGlobals.colorise `yellow "1.") (eval_string ()) in
     OpamGlobals.msg
       "\n%s\n\n\
-       %s To configure OPAM in the current shell session, you need to run:\n\
-       \n\
-      \      %s\n\
-       %s%s%s\n\n"
-      line
-      (OpamGlobals.colorise `yellow "1.")
-      (eval_string ()) profile_string ocamlinit_string line
+      %s%s%s%s\n\n"
+      line env_line
+       profile_string ocamlinit_string line
 
 let print_env_warning_at_switch t =
   if up_to_date_env t then ()

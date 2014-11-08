@@ -163,7 +163,10 @@ let remove_t switch ?(confirm = true) t =
 let update_global_config t ~warning switch =
   OpamState.update_switch_config t switch;
   let t = OpamState.load_state "switch-update-config" in
-  if warning then
+  (* @@DRA opam switch should have the --cmd; --fish; --sh, etc? *)
+  if OpamMisc.guess_shell_compat () = `cmd then
+    OpamConfigCommand.set_cmd_env (OpamState.get_opam_env ~force_path:false t)
+  else if warning then
     OpamState.print_env_warning_at_switch t
 
 

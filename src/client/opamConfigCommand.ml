@@ -138,7 +138,7 @@ let print_cmd_env env =
   List.iter (fun (k, v) -> OpamGlobals.msg "set %s=%s\n" k v) env
 
 let set_cmd_env env =
-  List.iter (fun (k, v) -> ignore (OpamMisc.parent_putenv k v)) env
+  List.iter (fun (k, v) -> ignore (OpamMisc.parent_putenv k v)) (env @ [("::QUIT", "")])
 
 let env ~cmd ~csh ~sexp ~fish ~inplace_path =
   log "config-env";
@@ -152,7 +152,7 @@ let env ~cmd ~csh ~sexp ~fish ~inplace_path =
     print_fish_env env
   else if cmd then
     if Unix.isatty Unix.stdout then
-      set_cmd_env (env @ [("::QUIT", "")])
+      set_cmd_env env
     else
       print_cmd_env env
   else
