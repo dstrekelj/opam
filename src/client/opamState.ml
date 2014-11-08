@@ -1749,7 +1749,10 @@ let source t ~shell ?(interactive_only=false) f =
     | `fish ->
       Printf.sprintf ". %s > /dev/null 2> /dev/null or true\n" (file f)
     | `cmd ->
-      Printf.sprintf "if exist \"%s\" call \"%s\" >nul 2>&1\n" (file f) (file f)
+       (*
+        * ver is used to reset the errorlevel, in order to remove a dependency on "true"
+        *)
+      Printf.sprintf "if exist \"%s\" call \"%s\" >nul 2>&1 || ver > nul\n" (file f) (file f)
     | _ ->
       Printf.sprintf ". %s > /dev/null 2> /dev/null || true\n" (file f)
   in
