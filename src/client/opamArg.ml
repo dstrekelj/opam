@@ -977,24 +977,24 @@ let config =
   let inplace_path    = mk_flag ["inplace-path"]   inplace_path_doc in
 
   let config global_options
-      command sh csh zsh fish sexp inplace_path
+      command sh csh zsh fish cmd sexp inplace_path
       dot_profile_o list all global user
       profile ocamlinit no_complete no_switch_eval
       params =
     apply_global_options global_options;
-    let csh, fish =
-      match sh, csh, sexp, fish with
-      | false, false, false, false ->
+    let cmd, csh, fish =
+      match cmd, sh, csh, sexp, fish with
+      | false, false, false, false, false ->
         (* No overrides have been provided, so guess which shell is active *)
         (match OpamMisc.guess_shell_compat () with
-         | `csh                -> true , false
-         | `fish               -> false, true
-         | `cmd                -> false, false
-         | `sh | `bash | `zsh  -> false, false)
-      | _ -> csh, fish
+         | `csh                -> false, true , false
+         | `fish               -> false, false, true
+         | `cmd                -> true , false, false
+         | `sh | `bash | `zsh  -> false, false, false)
+      | _ -> cmd, csh, fish
     in
     match command, params with
-    | Some `env, [] -> `Ok (Client.CONFIG.env ~csh ~sexp ~fish ~inplace_path)
+    | Some `env, [] -> `Ok (Client.CONFIG.env ~cmd ~csh ~sexp ~fish ~inplace_path)
     | Some `setup, [] ->
       let user        = all || user in
       let global      = all || global in
@@ -1155,7 +1155,7 @@ let config =
 
   Term.ret (
     Term.(pure config
-          $global_options $command $sh_flag $csh_flag $zsh_flag $fish_flag $sexp
+          $global_options $command $sh_flag $csh_flag $zsh_flag $fish_flag $cmd_flag $sexp
           $inplace_path
           $dot_profile_flag $list $all $global $user
           $profile $ocamlinit $no_complete $no_switch_eval

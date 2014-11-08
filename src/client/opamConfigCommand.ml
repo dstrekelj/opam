@@ -134,7 +134,13 @@ let print_fish_env env =
     OpamGlobals.msg "set -x %s %s;\n" k (String.concat " " (OpamMisc.split v ':'));
   ) env
 
-let env ~csh ~sexp ~fish ~inplace_path =
+let print_cmd_env env =
+  List.iter (fun (k, v) -> OpamGlobals.msg "set %s=%s\n" k v) env
+
+let set_cmd_env env =
+  List.iter (fun (k, v) -> ignore (OpamMisc.parent_putenv k v)) env
+
+let env ~cmd ~csh ~sexp ~fish ~inplace_path =
   log "config-env";
   let t = OpamState.load_env_state "config-env" in
   let env = OpamState.get_opam_env ~force_path:(not inplace_path) t in
@@ -144,6 +150,11 @@ let env ~csh ~sexp ~fish ~inplace_path =
     print_csh_env env
   else if fish then
     print_fish_env env
+  else if cmd then
+    if Unix.isatty Unix.stdout then
+      set_cmd_env (env @ [("::QUIT", "")])
+    else
+      print_cmd_env env
   else
     print_env env
 
