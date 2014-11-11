@@ -93,7 +93,7 @@ module Make (VCS: VCS) = struct
         (OpamFilename.prettify local_file);
       Up_to_date local_file
     ) else
-      Not_available (OpamFilename.to_string filename)
+      Not_available (OpamFilename.to_string OpamFilename.Native filename)
 
   let revision repo =
     Some (OpamPackage.Version.of_string (VCS.revision repo))

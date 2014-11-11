@@ -69,7 +69,7 @@ let print_state t =
       OpamPackage.Set.to_string p
     else
       Printf.sprintf "%d packages" (OpamPackage.Set.cardinal p) in
-  log "ROOT      : %a" (slog OpamFilename.Dir.to_string) t.root;
+  log "ROOT      : %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) t.root;
   log "SWITCH    : %a" (slog OpamSwitch.to_string) t.switch;
   log "COMPILER  : %a" (slog OpamCompiler.to_string) t.compiler;
   log "COMPILERS : %a" (slog OpamCompiler.Set.to_string) t.compilers;
@@ -367,7 +367,7 @@ let version_of_pin t name = function
         with Not_found ->
           OpamPackage.create name (OpamPackage.Version.of_string "0") in
       OpamGlobals.warning "Setting missing version in %s to %s"
-        (OpamFilename.to_string overlay)
+        (OpamFilename.to_string OpamFilename.Native overlay)
         (OpamPackage.Version.to_string @@ OpamPackage.version nv);
       OpamFile.OPAM.(write overlay (with_version opam (OpamPackage.version nv)));
       OpamPackage.version nv
@@ -619,7 +619,7 @@ let get_env_var v =
 
 (* filter handling *)
 let resolve_variable t ?opam local_variables v =
-  let dirname dir = string (OpamFilename.Dir.to_string dir) in
+  let dirname dir = string (OpamFilename.Dir.to_string OpamFilename.Native dir) in
   let read_var v =
     let var = OpamVariable.Full.variable v in
     let c = dot_config t (OpamVariable.Full.package v) in
@@ -1087,7 +1087,7 @@ let installed_versions t name =
 
 let installed_timestamp t name =
   let instfile = OpamPath.Switch.install t.root t.switch name in
-  (Unix.stat (OpamFilename.to_string instfile)).Unix.st_mtime
+  (Unix.stat (OpamFilename.to_string OpamFilename.Native instfile)).Unix.st_mtime
 
 (* Checks:
    * correct opam version
@@ -1096,7 +1096,7 @@ let installed_timestamp t name =
 let clean_dir dir nv =
   if OpamFilename.exists_dir dir then (
     log "%a exists although %a is not installed. Removing it."
-      (slog OpamFilename.Dir.to_string) dir
+      (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dir
       (slog OpamPackage.to_string) nv;
     OpamFilename.rmdir dir
   )
@@ -1104,7 +1104,7 @@ let clean_dir dir nv =
 let clean_file file nv =
   if OpamFilename.exists file then (
     log "%a exists although %a is not installed. Removing it."
-      (slog OpamFilename.to_string) file
+      (slog (OpamFilename.to_string OpamFilename.Native)) file
       (slog OpamPackage.to_string) nv;
     OpamFilename.remove file
   )
@@ -1115,7 +1115,7 @@ let global_dev_packages t =
   List.fold_left (fun map dir ->
       match OpamPackage.of_dirname dir with
       | None     ->
-        OpamGlobals.note "Removing %s" (OpamFilename.Dir.to_string dir);
+        OpamGlobals.note "Removing %s" (OpamFilename.Dir.to_string OpamFilename.Native dir);
         OpamFilename.rmdir dir;
         map
       | Some nv  ->
@@ -1130,7 +1130,7 @@ let switch_dev_packages t =
           OpamFilename.basename_dir dir in
         OpamPackage.Map.add (pinned t name) dir map
       with Failure _ | Not_found ->
-        OpamGlobals.note "Removing %s" (OpamFilename.Dir.to_string dir);
+        OpamGlobals.note "Removing %s" (OpamFilename.Dir.to_string OpamFilename.Native dir);
         OpamFilename.rmdir dir;
         map
     )
@@ -1173,11 +1173,11 @@ let global_consistency_checks t =
       pkgdirs
   in
   List.iter (fun d ->
-      log "Stale dev directory %s, removing" (OpamFilename.Dir.to_string d);
+      log "Stale dev directory %s, removing" (OpamFilename.Dir.to_string OpamFilename.Native d);
       OpamFilename.rmdir d)
     stale_pkgdirs;
   List.iter (fun f ->
-      log "Stale file %s found, Removing\n" (OpamFilename.to_string f);
+      log "Stale file %s found, Removing\n" (OpamFilename.to_string OpamFilename.Native f);
       OpamFilename.remove f)
     (OpamFilename.files pkgdir);
   let aliases = OpamFile.Aliases.safe_read (OpamPath.aliases t.root) in
@@ -1202,11 +1202,11 @@ let switch_consistency_checks t =
         dirs
     in
     List.iter (fun d ->
-        log "Stale %s directory %s, removing" title (OpamFilename.Dir.to_string d);
+        log "Stale %s directory %s, removing" title (OpamFilename.Dir.to_string OpamFilename.Native d);
         OpamFilename.rmdir d)
       stale_dirs;
     List.iter (fun f ->
-        OpamGlobals.error "Removing %s.\n" (OpamFilename.to_string f);
+        OpamGlobals.error "Removing %s.\n" (OpamFilename.to_string OpamFilename.Native f);
         OpamFilename.remove f)
       (OpamFilename.files dir)
   in
@@ -1227,7 +1227,7 @@ type cache = {
 }
 
 let check_marshaled_file file =
-  let ic = open_in_bin (OpamFilename.to_string file) in
+  let ic = open_in_bin (OpamFilename.to_string OpamFilename.Native file) in
   let magic_len = String.length OpamVersion.magic in
   let magic = String.create magic_len in
   really_input ic magic 0 magic_len;
@@ -1255,7 +1255,7 @@ let marshal_from_file file =
     let ic = check_marshaled_file file in
     let (cache: cache) = Marshal.from_channel ic in
     close_in ic;
-    log "Loaded %a in %.3fs" (slog OpamFilename.to_string) file (chrono ());
+    log "Loaded %a in %.3fs" (slog (OpamFilename.to_string OpamFilename.Native)) file (chrono ());
     Some cache.cached_opams
   with e ->
     OpamMisc.fatal e;
@@ -1275,7 +1275,7 @@ let save_state ~update t =
     log
       "Creating a cache of metadata in %s ...\n"
       (OpamFilename.prettify file);
-  let oc = open_out_bin (OpamFilename.to_string file) in
+  let oc = open_out_bin (OpamFilename.to_string OpamFilename.Native file) in
   output_string oc OpamVersion.magic;
   Marshal.to_channel oc { cached_opams = t.opams } [Marshal.No_sharing];
   close_out oc;
@@ -1330,7 +1330,7 @@ let load_state ?(save_cache=true) call_site =
          not !OpamGlobals.skip_version_checks then
         OpamGlobals.error_and_exit
           "%s reports a newer OPAM version, aborting."
-          (OpamFilename.Dir.to_string (OpamPath.root ()));
+          (OpamFilename.Dir.to_string OpamFilename.Native (OpamPath.root ()));
       (* opam has been updated, so refresh the configuration file and
          clean-up the cache. *)
       if OpamVersion.compare config_version (OpamVersion.of_string "1.2") < 0 then
@@ -1387,7 +1387,7 @@ let load_state ?(save_cache=true) call_site =
     try switch, OpamSwitch.Map.find switch aliases
     with Not_found ->
       log "%a does not contain the compiler name associated to the switch %a"
-        (slog @@ OpamFilename.to_string @* OpamPath.aliases) root
+        (slog @@ OpamFilename.to_string OpamFilename.Native @* OpamPath.aliases) root
         (slog OpamSwitch.to_string) switch;
       if !OpamGlobals.safe_mode then
         OpamGlobals.error_and_exit "Safe mode: invalid switch selected";
@@ -1491,7 +1491,7 @@ let install_global_config root switch =
     let map f l = List.rev_map (fun (s,p) -> OpamVariable.of_string s, S (f p)) l in
     let id x = x in
 
-    map OpamFilename.Dir.to_string
+    map (OpamFilename.Dir.to_string OpamFilename.Native)
       [
         ("root", root);
         ("prefix", OpamPath.Switch.root root switch);
@@ -1580,8 +1580,8 @@ let upgrade_to_1_1 () =
                 let tmp_file =
                   OpamFilename.create tmp_dir (OpamFilename.basename comp) in
                 log "backing up %a to %a"
-                  (slog OpamFilename.to_string) comp
-                  (slog OpamFilename.to_string) tmp_file;
+                  (slog (OpamFilename.to_string OpamFilename.Native)) comp
+                  (slog (OpamFilename.to_string OpamFilename.Native)) tmp_file;
                 OpamFilename.move ~src:comp ~dst:tmp_file;
                 (compname,tmp_file) :: backups
               )
@@ -1591,7 +1591,7 @@ let upgrade_to_1_1 () =
         OpamFilename.rmdir compilers;
 
         List.iter (fun (compname,tmp_file) ->
-            log "restoring %a" (slog OpamFilename.to_string) tmp_file;
+            log "restoring %a" (slog (OpamFilename.to_string OpamFilename.Native)) tmp_file;
             let comp = OpamPath.compiler_comp root compname in
             OpamFilename.mkdir (OpamFilename.dirname comp);
             OpamFilename.move ~src:tmp_file ~dst:comp
@@ -1640,7 +1640,7 @@ let upgrade_to_1_1 () =
     OpamFilename.rmdir opam_tmp;
 
     let () =
-      try OpamSystem.chdir (OpamFilename.Dir.to_string cwd)
+      try OpamSystem.chdir (OpamFilename.Dir.to_string OpamFilename.Native cwd)
       with OpamSystem.Internal_error _ -> () in
 
     OpamGlobals.header_msg
@@ -1656,7 +1656,7 @@ let upgrade_to_1_2 () =
   let root  = OpamPath.root () in
   let aliases = OpamFile.Aliases.safe_read (OpamPath.aliases root) in
   let remove_pinned_suffix d =
-    let s = OpamFilename.Dir.to_string d in
+    let s = OpamFilename.Dir.to_string OpamFilename.Native d in
     if Filename.check_suffix s ".pinned" then
       OpamFilename.move_dir ~src:d
         ~dst:(OpamFilename.Dir.of_string (Filename.chop_suffix s ".pinned"))
@@ -1741,7 +1741,7 @@ let init_file = function
   | `cmd  -> init_cmd
 
 let source t ~shell ?(interactive_only=false) f =
-  let file f = OpamFilename.to_string (OpamPath.init t.root // f) in
+  let file f = OpamFilename.to_string OpamFilename.Native (OpamPath.init t.root // f) in
   let s =
     match shell with
     | `csh ->
@@ -1773,7 +1773,7 @@ let expand_env t ?opam (env: env_updates) : env =
   let fenv = resolve_variable t ?opam OpamVariable.Map.empty in
   List.rev_map (fun (ident, symbol, string) ->
     let string = OpamFilter.substitute_string fenv string in
-    let prefix = OpamFilename.Dir.to_string t.root in
+    let prefix = OpamFilename.Dir.to_string OpamFilename.Native t.root in
     let read_env () =
       try OpamMisc.reset_env_value ~prefix OpamSystem.path_sep (OpamMisc.getenv ident)
       with Not_found -> [] in
@@ -1816,13 +1816,13 @@ let env_updates ~opamswitch ?(force_path=false) t =
   let new_path =
     "PATH",
     (if force_path then "+=" else "=+="),
-    OpamFilename.Dir.to_string add_to_path in
+    OpamFilename.Dir.to_string OpamFilename.Native add_to_path in
   let perl5 = OpamPackage.Name.of_string "perl5" in
   let add_to_perl5lib =  OpamPath.Switch.lib t.root t.switch perl5 in
-  let new_perl5lib = "PERL5LIB", "+=", OpamFilename.Dir.to_string add_to_perl5lib in
+  let new_perl5lib = "PERL5LIB", "+=", OpamFilename.Dir.to_string OpamFilename.Native add_to_perl5lib in
   let toplevel_dir =
     "OCAML_TOPLEVEL_PATH", "=",
-    OpamFilename.Dir.to_string (OpamPath.Switch.toplevel t.root t.switch) in
+    OpamFilename.Dir.to_string OpamFilename.Native (OpamPath.Switch.toplevel t.root t.switch) in
   let makeflags = "MAKEFLAGS", "=", "" in
   let makelevel = "MAKELEVEL", "=", "" in
   let man_path =
@@ -1831,7 +1831,7 @@ let env_updates ~opamswitch ?(force_path=false) t =
       [] (* MANPATH is a global override on those, so disabled for now *)
     | _ ->
       ["MANPATH", "=:",
-       OpamFilename.Dir.to_string (OpamPath.Switch.man_dir t.root t.switch)] in
+       OpamFilename.Dir.to_string OpamFilename.Native (OpamPath.Switch.man_dir t.root t.switch)] in
   let utf8 =
     match OpamGlobals.os () with
     | OpamGlobals.Darwin -> ["OPAMUTF8MSGS", "=", "1"]
@@ -1914,7 +1914,7 @@ let update_ocamlinit () =
           \  try Topdirs.dir_directory (Sys.getenv \"OCAML_TOPLEVEL_PATH\")\n\
           \  with Not_found -> ()\n\
            ;;\n\n" in
-        let oc = open_out_bin (OpamFilename.to_string file) in
+        let oc = open_out_bin (OpamFilename.to_string OpamFilename.Native file) in
         output_string oc (header ^ body);
         close_out oc;
       with e ->
@@ -2102,7 +2102,7 @@ let dot_profile_needs_update t dot_profile =
       else
         OpamFilename.read dot_profile in
     let pattern1 = "opam config" in
-    let pattern2 = OpamFilename.to_string (OpamPath.init t.root // "init") in
+    let pattern2 = OpamFilename.to_string OpamFilename.Native (OpamPath.init t.root // "init") in
     let pattern3 = OpamMisc.remove_prefix ~prefix:!OpamGlobals.root_dir pattern2 in
     if mem_pattern_in_string ~pattern:pattern1 ~string:body then
       `no
@@ -2453,7 +2453,7 @@ let install_compiler t ~quiet:_ switch compiler =
   let comp_f = OpamPath.compiler_comp t.root compiler in
   if not (OpamFilename.exists comp_f) then (
     OpamGlobals.msg "Cannot find %s: %s is not a valid compiler name.\n"
-      (OpamFilename.to_string comp_f)
+      (OpamFilename.to_string OpamFilename.Native comp_f)
       (OpamCompiler.to_string compiler);
     OpamGlobals.exit 1;
   );
@@ -2518,7 +2518,7 @@ let install_compiler t ~quiet:_ switch compiler =
           );
         let patches = OpamFile.Comp.patches comp in
         let patches = List.map (fun f ->
-            OpamFilename.download ~overwrite:true (OpamFilename.uri_of_file f) build_dir
+            OpamFilename.download ~overwrite:true f build_dir
           ) patches in
         List.iter (fun f -> OpamFilename.patch f build_dir) patches;
         OpamGlobals.msg "Now compiling OCaml. This may take a while, \
@@ -2526,7 +2526,7 @@ let install_compiler t ~quiet:_ switch compiler =
         if OpamFile.Comp.configure comp @ OpamFile.Comp.make comp <> [] then begin
           OpamFilename.exec build_dir
             [ ( "./configure" :: OpamFile.Comp.configure comp )
-              @ [ "-prefix";  OpamFilename.Dir.to_string switch_dir ]
+              @ [ "-prefix";  OpamFilename.Dir.to_string OpamFilename.Command switch_dir ]
             (*-bindir %s/bin -libdir %s/lib -mandir %s/man*)
             (* NOTE In case it exists 2 '-prefix', in general the script
                ./configure will only consider the last one, others will be
@@ -2701,7 +2701,7 @@ let update_dev_package t nv =
              (List.map diff_to_string (diff user_meta new_meta)));
         OpamGlobals.confirm "\nOverride files in %s\n\
                             \  (there will be a backup) ?"
-          (OpamFilename.Dir.to_string overlay)
+          (OpamFilename.Dir.to_string OpamFilename.Native overlay)
       then (
         let bak =
           OpamPath.backup_dir t.root / (OpamPackage.to_string nv ^ ".bak") in
@@ -2709,7 +2709,7 @@ let update_dev_package t nv =
         OpamFilename.rmdir bak;
         OpamFilename.copy_dir ~src:overlay ~dst:bak;
         OpamGlobals.msg "User metadata backed up in %s\n"
-          (OpamFilename.Dir.to_string bak);
+          (OpamFilename.Dir.to_string OpamFilename.Native bak);
         install_meta srcdir user_meta new_meta;
       );
     result
@@ -2769,7 +2769,7 @@ let check f =
     OpamGlobals.error_and_exit
       "No OPAM root found at %s.\n\
        Please run 'opam init' first to initialize the state of OPAM."
-      (OpamFilename.Dir.to_string root);
+      (OpamFilename.Dir.to_string OpamFilename.Native root);
 
   match f with
 

@@ -24,7 +24,7 @@ let slog = OpamGlobals.slog
 type state = {
   remote_dir          : dirname;
   local_dir           : dirname;
-  remote_index_archive: OpamFilename.uri OpamFilename.link;
+  remote_index_archive: filename;
   local_index_archive : filename;
   local_files         : filename_set;
   remote_local        : filename filename_map;
@@ -50,10 +50,10 @@ let make_state ~download_index repo =
     List.assoc repo.repo_address !state_cache
   else (
     let repo_address = OpamFilename.raw_dir (fst repo.repo_address) in
-    let remote_index_file = OpamFilename.uri repo_address "urls.txt" in
+    let remote_index_file = repo_address // "urls.txt" in
     let local_index_file = index_file repo.repo_root in
     let local_index_file_save = index_file_save repo.repo_root in
-    let remote_index_archive = OpamFilename.uri repo_address "index.tar.gz" in
+    let remote_index_archive = repo_address // "index.tar.gz" in
     let local_index_archive = repo.repo_root // "index.tar.gz" in
     let index =
       if download_index then (
@@ -63,7 +63,7 @@ let make_state ~download_index repo =
 	  OpamGlobals.msg "[%s] Downloading %s\n"
 	    (OpamGlobals.colorise `blue
                (OpamRepositoryName.to_string repo.repo_name))
-	    (OpamFilename.uri_to_string remote_index_file);
+	    (OpamFilename.to_string OpamFilename.URI remote_index_file);
           let file =
             OpamFilename.download ~compress:true ~overwrite:false
               remote_index_file repo.repo_root in
@@ -111,7 +111,7 @@ let is_up_to_date state local_file =
   try
     let _,_,md5 = OpamFilename.Map.find local_file state.local_remote in
     OpamFilename.exists local_file &&
-    not (Sys.is_directory (OpamFilename.to_string local_file))
+    not (Sys.is_directory (OpamFilename.to_string OpamFilename.Native local_file))
     && md5 = OpamFilename.digest local_file
   with Not_found -> false
 
@@ -119,7 +119,7 @@ let get_checksum state local_file =
   try
     let _,_,expected = OpamFilename.Map.find local_file state.local_remote in
     if OpamFilename.exists local_file &&
-       not (Sys.is_directory (OpamFilename.to_string local_file))
+       not (Sys.is_directory (OpamFilename.to_string OpamFilename.Native local_file))
     then
       let actual = OpamFilename.digest local_file in
       Some (actual, expected)
@@ -145,7 +145,7 @@ module B = struct
 	OpamGlobals.msg "[%s] Downloading %s\n"
 	  (OpamGlobals.colorise `blue
              (OpamRepositoryName.to_string repo.repo_name))
-	  (OpamFilename.uri_to_string state.remote_index_archive);
+	  (OpamFilename.to_string OpamFilename.URI state.remote_index_archive);
         let file =
           OpamFilename.download ~overwrite:true
             state.remote_index_archive state.local_dir in
@@ -162,7 +162,7 @@ module B = struct
 
   let curl ~remote_file ~local_file =
     log "curl";
-    log "dowloading %a" (slog OpamFilename.uri_to_string) remote_file;
+    log "dowloading %a" (slog (OpamFilename.to_string OpamFilename.URI)) remote_file;
     (* OpamGlobals.msg "Downloading %s\n" (OpamFilename.to_string remote_file); *)
     OpamFilename.download_as ~overwrite:true remote_file local_file
 
@@ -200,17 +200,16 @@ module B = struct
             (OpamGlobals.colorise `blue
                (OpamRepositoryName.to_string repo.repo_name))
             (OpamFilename.prettify remote_file);
-          curl ~remote_file:(OpamFilename.uri_of_file remote_file) ~local_file
+          curl ~remote_file ~local_file
         ) new_files;
     )
 
   let pull_url package dirname checksum remote_url =
     let remote_url = OpamTypesBase.string_of_address remote_url in
     log "pull-file into %a: %s"
-      (slog OpamFilename.Dir.to_string) dirname
+      (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dirname
       remote_url;
     let filename = OpamFilename.of_string remote_url in
-    let uri = OpamFilename.uri_of_file filename in
     let base = OpamFilename.basename filename in
     let local_file = OpamFilename.create dirname base in
     let check_sum f = match checksum with
@@ -224,11 +223,11 @@ module B = struct
       in
       if extra <> [] &&
          OpamMisc.starts_with (* Just a safeguard *)
-           ~prefix:(OpamFilename.Dir.to_string (OpamPath.root ()))
-           (OpamFilename.Dir.to_string dirname)
+           ~prefix:(OpamFilename.Dir.to_string OpamFilename.Native (OpamPath.root ()))
+           (OpamFilename.Dir.to_string OpamFilename.Native dirname)
       then
         (log "Removing stale files in download dir: %a"
-           (slog @@ List.map OpamFilename.to_string @> OpamMisc.pretty_list)
+           (slog @@ List.map (OpamFilename.to_string OpamFilename.Native) @> OpamMisc.pretty_list)
            extra;
          List.iter OpamFilename.remove extra);
       found <> []
@@ -242,9 +241,9 @@ module B = struct
     else (
       OpamGlobals.msg "[%s] Downloading %s\n"
         (OpamGlobals.colorise `green (OpamPackage.to_string package))
-        (OpamFilename.to_string filename);
+        (OpamFilename.to_string OpamFilename.URI filename);
       try
-        let local_file = OpamFilename.download ~overwrite:true uri dirname in
+        let local_file = OpamFilename.download ~overwrite:true filename dirname in
         OpamRepository.check_digest local_file checksum;
         Result (F local_file)
       with e ->
@@ -254,7 +253,6 @@ module B = struct
 
   let pull_archive repo filename =
     log "pull-archive";
-    let uri = OpamFilename.uri_of_file filename in
     let state = make_state ~download_index:false repo in
     try
       let local_file = OpamFilename.Map.find filename state.remote_local in
@@ -265,11 +263,11 @@ module B = struct
 	  (OpamGlobals.colorise `blue
              (OpamRepositoryName.to_string repo.repo_name))
 	  (OpamFilename.prettify filename);
-	curl ~remote_file:uri ~local_file;
+	curl ~remote_file:filename ~local_file;
         Result local_file
       )
     with Not_found ->
-      Not_available (OpamFilename.to_string filename)
+      Not_available (OpamFilename.to_string OpamFilename.URI filename)
 
   let revision _ =
     None
@@ -279,7 +277,7 @@ end
 let make_urls_txt ~write repo_root =
   let repo = OpamRepository.local repo_root in
   let local_index_file = OpamFilename.of_string "urls.txt" in
-  log "Scanning %a" (slog OpamFilename.Dir.to_string) repo_root;
+  log "Scanning %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) repo_root;
   let index =
     List.fold_left (fun set f ->
       if not (OpamFilename.exists f) then set

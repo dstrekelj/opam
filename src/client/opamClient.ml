@@ -167,7 +167,7 @@ let with_switch_backup command f =
     else
      Printf.eprintf "\nThe former state can be restored with \
                      %s switch import %S\n%!"
-       Sys.argv.(0) (OpamFilename.to_string file);
+       Sys.argv.(0) (OpamFilename.to_string OpamFilename.Native file);
     raise err
 
 let packages_of_atoms t atoms =
@@ -1093,7 +1093,7 @@ module API = struct
     ) else (
       if not root_empty then (
         OpamGlobals.warning "%s exists and is not empty"
-          (OpamFilename.Dir.to_string root);
+          (OpamFilename.Dir.to_string OpamFilename.Native root);
         if not (OpamGlobals.confirm "Proceed ?") then OpamGlobals.exit 1);
       try
 

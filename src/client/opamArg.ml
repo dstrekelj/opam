@@ -45,8 +45,8 @@ let self_upgrade_exe opamroot =
 
 let switch_to_updated_self debug opamroot =
   let updated_self, updated_self_version = self_upgrade_exe opamroot in
-  let updated_self_str = OpamFilename.to_string updated_self in
-  let updated_self_version_str = OpamFilename.to_string updated_self_version in
+  let updated_self_str = OpamFilename.to_string OpamFilename.Native updated_self in
+  let updated_self_version_str = OpamFilename.to_string OpamFilename.Native updated_self_version in
   if updated_self_str <> Sys.executable_name &&
      OpamFilename.exists updated_self &&
      OpamFilename.is_exec updated_self &&
@@ -125,7 +125,7 @@ let apply_global_options o =
     | None   -> ()
     | Some s -> OpamGlobals.switch := `Command_line s
   end;
-  OpamGlobals.root_dir := OpamFilename.Dir.to_string o.root;
+  OpamGlobals.root_dir := OpamFilename.Dir.to_string OpamFilename.Native o.root;
   OpamGlobals.yes      := !OpamGlobals.yes || o.yes;
   OpamGlobals.strict   := !OpamGlobals.strict || o.strict;
   OpamGlobals.no_base_packages := !OpamGlobals.no_base_packages || o.no_base_packages;
@@ -271,7 +271,7 @@ let address =
 
 let filename =
   let parse str = `Ok (OpamFilename.of_string str) in
-  let print ppf filename = pr_str ppf (OpamFilename.to_string filename) in
+  let print ppf filename = pr_str ppf (OpamFilename.to_string OpamFilename.Native filename) in
   parse, print
 
 let dirname =
@@ -1143,7 +1143,7 @@ let config =
                  (OpamFile.Comp.read
                     (OpamPath.compiler_comp state.root state.compiler)))
            then "*" else "");
-        let index_file = OpamFilename.to_string (OpamPath.package_index state.root) in
+        let index_file = OpamFilename.to_string OpamFilename.Native (OpamPath.package_index state.root) in
         let u = Unix.gmtime (Unix.stat index_file).Unix.st_mtime in
         Unix.(print "last-update" "%04d-%02d-%02d %02d:%02d"
               (1900 + u.tm_year) (1 + u.tm_mon) u.tm_mday
@@ -1669,7 +1669,7 @@ let source =
     if exists_dir dir then
       OpamGlobals.error_and_exit
         "Directory %s already exists. Please remove it or use option `--dir'"
-        (Dir.to_string dir);
+        (Dir.to_string OpamFilename.Native dir);
     let opam = OpamState.opam t nv in
     if dev_repo then (
       match OpamFile.OPAM.dev_repo opam with
@@ -1690,7 +1690,7 @@ let source =
           | Some k -> k
           | None -> assert false
         in
-        OpamGlobals.error "%s" (Dir.to_string dir);
+        OpamGlobals.error "%s" (Dir.to_string OpamFilename.Native dir);
         mkdir dir;
         match OpamRepository.pull_url kind nv dir None [address] with
         | Not_available u -> OpamGlobals.error_and_exit "%s is not available" u
@@ -1703,7 +1703,7 @@ let source =
       move_dir
         ~src:(OpamPath.Switch.build t.root t.switch nv)
         ~dst:dir;
-      OpamGlobals.msg "Successfully extracted to %s\n" (Dir.to_string dir);
+      OpamGlobals.msg "Successfully extracted to %s\n" (Dir.to_string OpamFilename.Native dir);
       if not (exists OP.(dir // "opam") || exists_dir OP.(dir / "opam"))
       then
         OpamFile.OPAM.write OP.(dir // "opam")
@@ -1714,7 +1714,7 @@ let source =
 
     if pin then
       let pin_option =
-        pin_option_of_string ~kind:`local (OpamFilename.Dir.to_string dir) in
+        pin_option_of_string ~kind:`local (OpamFilename.Dir.to_string OpamFilename.Native dir) in
       Client.PIN.pin (OpamPackage.name nv) (Some pin_option)
   in
   Term.(pure source
@@ -1769,7 +1769,7 @@ let lint =
         OpamGlobals.exit 1
     else
       (OpamGlobals.error_and_exit "No opam file found at %s"
-         (OpamFilename.to_string opam_f))
+         (OpamFilename.to_string OpamFilename.Native opam_f))
   in
   Term.(pure lint $global_options $file $normalise),
   term_info "lint" ~doc ~man

@@ -109,11 +109,13 @@ let string_of_pos (file,line,col) =
 
 (* Command line arguments *)
 
+(*
 let string_of_upload u =
   Printf.sprintf "opam=%s descr=%s archive=%s"
     (OpamFilename.to_string u.upl_opam)
     (OpamFilename.to_string u.upl_descr)
     (OpamFilename.to_string u.upl_archive)
+*)
 
 let repository_kind_of_pin_kind = function
   | `version -> None
@@ -159,7 +161,7 @@ let string_of_pin_option = function
   | Git p
   | Darcs p
   | Hg p      -> string_of_address p
-  | Local p   -> OpamFilename.Dir.to_string p
+  | Local p   -> OpamFilename.Dir.to_string OpamFilename.Native p
 
 let kind_of_pin_option = function
   | Version _ -> `version

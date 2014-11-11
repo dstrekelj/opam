@@ -47,7 +47,7 @@ let path_sep = match OpamGlobals.os () with
   | OpamGlobals.Cygwin | _ -> ':'
 
 let temp_basename prefix =
-  Printf.sprintf "%s-%d-%06x" prefix (Unix.getpid ()) (Random.int 0xFFFFFF)
+  Printf.sprintf "%s-%d-%06x" prefix (OpamGlobals.getpid ()) (Random.int 0xFFFFFF)
 
 let rec mk_temp_dir () =
   let s = Filename.temp_dir_name / temp_basename "opam" in
@@ -679,7 +679,7 @@ let download_command =
  * and if this matches, then really_download will cp the file from this directory
  * instead of downloading it
  *)
-let cache_directory = None
+let cache_directory = Some "C:\\DRA\\.opam-cache"
 
 let check_cache =
   match cache_directory with

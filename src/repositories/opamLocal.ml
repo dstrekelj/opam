@@ -65,9 +65,9 @@ let rsync src dst =
 let rsync_dirs src dst =
   let src_s =
     (* ensure trailing '/' *)
-    Filename.concat (OpamFilename.Dir.to_string src) ""
+    OpamFilename.OP.(OpamFilename.to_string OpamFilename.Command (src // ""))
   in
-  let dst_s = OpamFilename.Dir.to_string dst in
+  let dst_s = OpamFilename.Dir.to_string OpamFilename.Command dst in
   let remote = String.contains src_s ':' in
   if not remote then OpamFilename.mkdir src;
   match rsync src_s dst_s with
@@ -76,8 +76,8 @@ let rsync_dirs src dst =
   | Up_to_date _    -> Up_to_date dst
 
 let rsync_file src dst =
-  let src_s = OpamFilename.to_string src in
-  let dst_s = OpamFilename.to_string dst in
+  let src_s = OpamFilename.to_string OpamFilename.Command src in
+  let dst_s = OpamFilename.to_string OpamFilename.Command dst in
   log "rsync_file src=%s dst=%s" src_s dst_s;
   let remote = String.contains src_s ':' in
   if not (remote || OpamFilename.exists src) then
@@ -122,11 +122,11 @@ module B = struct
       ];
     let archives = OpamFilename.files (OpamPath.Repository.archives_dir repo) in
     log "archives: %a"
-      (slog (OpamMisc.string_of_list OpamFilename.to_string)) archives;
+      (slog (OpamMisc.string_of_list (OpamFilename.to_string OpamFilename.Native))) archives;
     List.iter (fun archive ->
         match OpamPackage.of_archive archive with
         | None    ->
-          OpamGlobals.msg "Removing %s\n." (OpamFilename.to_string archive);
+          OpamGlobals.msg "Removing %s\n." (OpamFilename.to_string OpamFilename.Native archive);
           OpamFilename.remove archive
         | Some nv ->
         let remote_filename = OpamPath.Repository.remote_archive repo nv in
@@ -142,7 +142,7 @@ module B = struct
       (OpamGlobals.colorise `green
          (OpamPackage.to_string package))
       remote_url;
-    let dir = OpamFilename.Dir.to_string local_dirname in
+    let dir = OpamFilename.Dir.to_string OpamFilename.Command local_dirname in
     let remote_url =
       if Sys.file_exists remote_url && Sys.is_directory remote_url
       (* ensure that rsync doesn't recreate a subdir: add trailing '/' *)
@@ -166,7 +166,7 @@ module B = struct
       OpamGlobals.msg "[%s] Synchronizing with %s\n"
         (OpamGlobals.colorise `blue
            (OpamRepositoryName.to_string repo.repo_name))
-        (OpamFilename.to_string filename);
+        (OpamFilename.to_string OpamFilename.Command filename);
     let local_dir = OpamPath.Repository.archives_dir repo in
     OpamFilename.mkdir local_dir;
     pull_file_quiet local_dir filename

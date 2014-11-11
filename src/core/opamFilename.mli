@@ -16,11 +16,35 @@
 
 (** Typed filename manipulation *)
 
+type profile = URI | Native | Command | Display
+
 (** Basenames *)
-module Base: OpamMisc.ABSTRACT
+module Base: (* OpamMisc.ABSTRACT *)
+  sig
+    type t
+    val of_string: string -> t
+
+    val to_string: t -> string
+
+    val to_json: t -> OpamJson.t
+
+    module Set: OpamMisc.SET with type elt = t
+    module Map: OpamMisc.MAP with type key = t
+  end
 
 (** Directory names *)
-module Dir: OpamMisc.ABSTRACT
+module Dir: (* OpamMisc.ABSTRACT *)
+  sig
+    type t
+    val of_string: string -> t
+
+    val to_string: profile -> t -> string
+
+    val to_json: t -> OpamJson.t
+
+    module Set: OpamMisc.SET with type elt = t
+    module Map: OpamMisc.MAP with type key = t
+  end
 
 (** Return the current working directory *)
 val cwd: unit -> Dir.t
@@ -76,14 +100,17 @@ val raw_dir: string -> Dir.t
 (** Execute a function in a temp directory *)
 val with_tmp_dir: (Dir.t -> 'a) -> 'a
 
-include OpamMisc.ABSTRACT
+(*include OpamMisc.ABSTRACT*)
+type t
 
-type uri
-type file
-type 'a link
+val of_string: string -> t
 
-val uri_to_string : uri link -> string
-val uri_of_file : t -> uri link
+val to_json: t -> OpamJson.t
+
+val to_string: profile -> t -> string
+
+module Set: OpamMisc.SET with type elt = t
+module Map: OpamMisc.MAP with type key = t
 
 (** Generic filename *)
 type generic_file =
@@ -92,11 +119,6 @@ type generic_file =
 
 (** Create a filename from a Dir.t and a basename *)
 val create: Dir.t -> Base.t -> t
-
-(** Create a uri from a Dir.t and a filename *)
-val uri: Dir.t -> string -> uri link
-
-val file_of_uri: uri link -> t
 
 (** Create a file from a basename and the current working directory
     as dirname *)
@@ -213,14 +235,14 @@ val remove_suffix: Base.t -> t -> string
     of the downloaded file if the download is successful.
     Compress activates http content compression if supported. May break
     on gzipped files, only use for text files *)
-val download: overwrite:bool -> ?compress:bool -> uri link -> Dir.t -> t
+val download: overwrite:bool -> ?compress:bool -> t -> Dir.t -> t
 
 (** same as [download], but with a specified destination filename instead of a
     directory *)
-val download_as: overwrite:bool -> ?compress:bool -> uri link -> t -> unit
+val download_as: overwrite:bool -> ?compress:bool -> t -> t -> unit
 
 (** iterate downloads until one is sucessful *)
-val download_iter: overwrite:bool -> uri link list -> Dir.t -> t
+val download_iter: overwrite:bool -> t list -> Dir.t -> t
 
 (** Apply a patch to a directory *)
 val patch: t -> Dir.t -> unit

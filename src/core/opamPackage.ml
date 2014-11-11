@@ -177,7 +177,7 @@ let of_archive f =
   | Some (s,_) -> of_string_opt s
 
 let list dir =
-  log "list %a" (slog OpamFilename.Dir.to_string) dir;
+  log "list %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dir;
   if OpamFilename.exists_dir dir then (
     let files = OpamFilename.rec_files dir in
     List.fold_left (fun set f ->
@@ -189,14 +189,14 @@ let list dir =
             let suffix = Filename.concat (to_string p) "opam" in
             let files = List.filter (OpamFilename.ends_with suffix) files in
             OpamGlobals.error_and_exit "Multiple definition of package %s in %s:\n  %s"
-              (to_string p) (OpamFilename.Dir.to_string dir)
-              (String.concat "\n  " (List.map OpamFilename.to_string files));
+              (to_string p) (OpamFilename.Dir.to_string OpamFilename.Native dir)
+              (String.concat "\n  " (List.map (OpamFilename.to_string OpamFilename.Native) files));
       ) Set.empty files
   ) else
     Set.empty
 
 let prefixes dir =
-  log "prefixes %a" (slog OpamFilename.Dir.to_string) dir;
+  log "prefixes %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dir;
   if OpamFilename.exists_dir dir then (
     let files = OpamFilename.rec_files dir in
     List.fold_left (fun map f ->
@@ -204,10 +204,10 @@ let prefixes dir =
         | None   -> map
         | Some p ->
           let dirname = OpamFilename.dirname_dir (OpamFilename.dirname f) in
-          let suffix = OpamFilename.Dir.to_string dirname in
+          let suffix = OpamFilename.Dir.to_string OpamFilename.Native dirname in
           let prefix =
             match
-              OpamMisc.remove_prefix ~prefix:(OpamFilename.Dir.to_string dir) suffix
+              OpamMisc.remove_prefix ~prefix:(OpamFilename.Dir.to_string OpamFilename.Native dir) suffix
             with
             | "" -> None
             | p  -> (* drop the leading '/' from the prefix *)

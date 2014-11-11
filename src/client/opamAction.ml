@@ -57,7 +57,7 @@ let install_package t nv =
         let src_file = OpamFilename.create src base.c in
         if base.optional && not (OpamFilename.exists src_file) then
           log "Not installing %a is not present and optional."
-            (slog OpamFilename.to_string) src_file;
+            (slog (OpamFilename.to_string OpamFilename.Native)) src_file;
         if not base.optional && not (OpamFilename.exists src_file) then (
           warnings := (dst, base.c) :: !warnings
         );
@@ -68,7 +68,7 @@ let install_package t nv =
         let dst_dir = dst_fn t.root t.switch name in
         let files = files_fn install in
         if not (OpamFilename.exists_dir dst_dir) then (
-          log "creating %a" (slog OpamFilename.Dir.to_string) dst_dir;
+          log "creating %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dst_dir;
           OpamFilename.mkdir dst_dir;
         );
         List.iter (fun (base, dst) ->
@@ -115,11 +115,11 @@ let install_package t nv =
         (fun (src, dst) ->
           let src_file = OpamFilename.create (OpamFilename.cwd ()) src.c in
           if OpamFilename.exists dst
-          && OpamGlobals.confirm "Overwriting %s ?" (OpamFilename.to_string dst) then
+          && OpamGlobals.confirm "Overwriting %s ?" (OpamFilename.to_string OpamFilename.Native dst) then
             OpamFilename.install ~src:src_file ~dst ()
           else begin
             OpamGlobals.msg "Installing %s to %s.\n"
-              (OpamFilename.Base.to_string src.c) (OpamFilename.to_string dst);
+              (OpamFilename.Base.to_string src.c) (OpamFilename.to_string OpamFilename.Native dst);
             if OpamGlobals.confirm "Continue ?" then
               OpamFilename.install ~src:src_file ~dst ()
           end
@@ -129,12 +129,12 @@ let install_package t nv =
         let print (dir, base) =
           Printf.sprintf " - %s in %s"
             (OpamFilename.Base.to_string base)
-            (OpamFilename.Dir.to_string dir) in
+            (OpamFilename.Dir.to_string OpamFilename.Native dir) in
         OpamGlobals.error
           "While installing the following files:\n%s"
           (String.concat "\n" (List.map print !warnings));
         failwith (Printf.sprintf "Error processing %s.install"
-                    (OpamFilename.to_string install_f));
+                    (OpamFilename.to_string OpamFilename.Native install_f));
       )
     );
   if not (!OpamGlobals.keep_build_dir || !OpamGlobals.debug) then
@@ -185,7 +185,7 @@ let prepare_package_build t nv =
         OpamGlobals.error "Could not apply patch to %s (%s in %s)"
           (OpamPackage.to_string nv)
           (OpamFilename.Base.to_string base)
-          (OpamFilename.Dir.to_string root);
+          (OpamFilename.Dir.to_string OpamFilename.Native root);
         raise e);
 
   (* Substitute the configuration files. We should be in the right
@@ -225,16 +225,16 @@ let extract_package t nv =
   let extract_and_copy_files dir =
     let extract_dir () = OpamFilename.extract_generic_file (D dir) build_dir in
     let () = match OpamFilename.files dir with
-      | [] -> log "No files found in %s" (OpamFilename.Dir.to_string dir)
+      | [] -> log "No files found in %s" (OpamFilename.Dir.to_string OpamFilename.Native dir)
       | [f] ->
-        log "archive %a => extracting" (slog OpamFilename.to_string) f;
+        log "archive %a => extracting" (slog (OpamFilename.to_string OpamFilename.Native)) f;
         begin
           try OpamFilename.extract_generic_file (F f) build_dir
           with OpamSystem.Internal_error _ -> extract_dir ()
         end
       | _::_::_ ->
         log "multiple files in %a: assuming dev directory & copying"
-          (slog OpamFilename.Dir.to_string) dir;
+          (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dir;
         extract_dir ()
     in
     OpamState.copy_files t nv build_dir in
@@ -393,7 +393,7 @@ let remove_package_aux t ~metadata ?(keep_build=false) ?(silent=false) nv =
     if OpamFilename.rec_files dir = [] then OpamFilename.rmdir dir
     else if OpamFilename.exists_dir dir then
       OpamGlobals.warning "Directory %s is not empty, not removing"
-        (OpamFilename.Dir.to_string dir) in
+        (OpamFilename.Dir.to_string OpamFilename.Native dir) in
 
   (* Remove build/<package> *)
   if not (keep_build || !OpamGlobals.keep_build_dir) then
@@ -419,7 +419,7 @@ let remove_package_aux t ~metadata ?(keep_build=false) ?(silent=false) nv =
   log "Removing the misc files";
   List.iter (fun (_,dst) ->
       if OpamFilename.exists dst then begin
-        OpamGlobals.msg "Removing %s." (OpamFilename.to_string dst);
+        OpamGlobals.msg "Removing %s." (OpamFilename.to_string OpamFilename.Native dst);
         if OpamGlobals.confirm "Continue ?" then
           OpamFilename.remove dst
       end
@@ -460,7 +460,7 @@ let cleanup_package_artefacts t nv =
   let dev = OpamPath.dev_package t.root nv in
   if OpamFilename.exists_dir dev &&
      not (OpamPackage.Set.mem nv (OpamState.all_installed t)) then (
-    log "Removing %a" (slog OpamFilename.Dir.to_string) dev;
+    log "Removing %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dev;
     OpamFilename.rmdir dev;
   )
 

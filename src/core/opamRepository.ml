@@ -170,7 +170,7 @@ let check_digest filename = function
            In case an update does not fix that problem, you can use the \
            `--no-checksums` command-line option\n\
            to /bypass checking for invalid checksums."
-          (OpamFilename.to_string filename)
+          (OpamFilename.to_string OpamFilename.Native filename)
           expected
           actual
 
@@ -196,12 +196,12 @@ let check_version repo =
 
 let extract_prefix repo dir nv =
   let prefix =
-    let prefix = OpamFilename.Dir.to_string (OpamPath.Repository.packages_dir repo) in
+    let prefix = OpamFilename.Dir.to_string OpamFilename.Native (OpamPath.Repository.packages_dir repo) in
     prefix ^ Filename.dir_sep in
   let suffix =
     let suffix = OpamPackage.to_string nv in
     Filename.dir_sep ^ suffix in
-  let dir = OpamFilename.Dir.to_string dir in
+  let dir = OpamFilename.Dir.to_string OpamFilename.Native dir in
   OpamMisc.remove_prefix ~prefix (OpamMisc.remove_suffix ~suffix dir)
 
 let file f =
@@ -362,10 +362,10 @@ let make_archive ?(gener_digest=false) repo prefix nv =
     (* Finally create the final archive *)
   let create_archive files extract_root =
     if not (OpamFilename.Set.is_empty files) || OpamFilename.exists url_file then (
-      OpamGlobals.msg "Creating %s.\n" (OpamFilename.to_string archive);
+      OpamGlobals.msg "Creating %s.\n" (OpamFilename.to_string OpamFilename.Native archive);
       OpamFilename.exec extract_root [
         [ "tar" ; "czf" ;
-          OpamFilename.to_string archive ;
+          OpamFilename.to_string OpamFilename.Command archive ;
           OpamPackage.to_string nv ]
       ];
       Some archive

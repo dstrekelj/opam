@@ -248,10 +248,10 @@ let install_packages ~packages switch compiler =
 let install_cont ~quiet ~warning ~update_config switch compiler =
   let t = OpamState.load_state "install" in
   let comp_dir = OpamPath.Switch.root t.root switch in
-  if Sys.file_exists (OpamFilename.Dir.to_string comp_dir) then
+  if Sys.file_exists (OpamFilename.Dir.to_string OpamFilename.Native comp_dir) then
     OpamGlobals.error_and_exit
       "%S already exists, please choose a different name"
-      (OpamFilename.Dir.to_string comp_dir);
+      (OpamFilename.Dir.to_string OpamFilename.Native comp_dir);
   let comp_f = OpamPath.compiler_comp t.root compiler in
   if not (OpamFilename.exists_dir comp_dir)
   && not (OpamFilename.exists comp_f) then
@@ -475,7 +475,7 @@ let with_backup command f =
     else
       Printf.eprintf "The former package state can be restored with \
                       %s switch import %S%s\n"
-        Sys.argv.(0) (OpamFilename.to_string file)
+        Sys.argv.(0) (OpamFilename.to_string OpamFilename.Native file)
         (match !OpamGlobals.switch with
          | `Command_line sw -> Printf.sprintf " --switch %s" sw
          | _ -> "");

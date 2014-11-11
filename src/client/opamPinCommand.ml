@@ -63,7 +63,7 @@ let edit t name =
     try
       ignore @@ Sys.command
         (Printf.sprintf "%s %s"
-           (Lazy.force OpamGlobals.editor) (OpamFilename.to_string temp_file));
+           (Lazy.force OpamGlobals.editor) (OpamFilename.to_string OpamFilename.Command temp_file));
       let opam = OpamFile.OPAM.read temp_file in
       if OpamFile.OPAM.name_opt opam <> Some name then
         (OpamGlobals.error
@@ -92,7 +92,7 @@ let edit t name =
     with e ->
       OpamMisc.fatal e;
       if OpamGlobals.confirm "Errors in %s, retry editing ?"
-          (OpamFilename.to_string file)
+          (OpamFilename.to_string OpamFilename.Native file)
       then edit ()
       else None
   in
@@ -113,7 +113,7 @@ let edit t name =
             else dir // "opam")
         in
         if OpamGlobals.confirm "Save the new opam file back to %S ?"
-            (OpamFilename.to_string src_opam) then
+            (OpamFilename.to_string OpamFilename.Native src_opam) then
           OpamFilename.copy ~src:file ~dst:src_opam
       | Version _ | Git _ | Darcs _ | Hg _ -> ()
     in
@@ -206,7 +206,7 @@ let pin name pin_option =
          OpamGlobals.note
            "You are pinning to %s as a raw path while it seems to be a %s \
             repository."
-           (OpamFilename.Dir.to_string dir) kind;
+           (OpamFilename.Dir.to_string OpamFilename.Native dir) kind;
          OpamGlobals.note
            "Consider pinning with '-k %s' to have OPAM synchronise with \
             your commits and ignore build artefacts."

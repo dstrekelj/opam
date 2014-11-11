@@ -74,14 +74,14 @@ let installed_findlibs () =
   let libs = List.fold_left (fun acc dir ->
       let file = dir // "META" in
       if OpamFilename.exists file then
-        let lib = Filename.basename (OpamFilename.Dir.to_string dir) in
+        let lib = Filename.basename (OpamFilename.Dir.to_string OpamFilename.Native dir) in
         StringSet.add lib acc
       else
         acc
     ) StringSet.empty dirs in
   let files = OpamFilename.files libdir in
   let libs = List.fold_left (fun acc file ->
-      let raw = Filename.basename (OpamFilename.to_string file) in
+      let raw = Filename.basename (OpamFilename.to_string OpamFilename.Native file) in
       let prefix = "META." in
       if OpamMisc.starts_with ~prefix raw then
         let lib = OpamMisc.remove_prefix ~prefix raw in

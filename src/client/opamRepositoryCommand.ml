@@ -313,7 +313,7 @@ let fix_package_descriptions t ~verbose =
   if !OpamGlobals.sync_archives then
     OpamPackage.Map.iter (fun nv _ ->
         log "download %a"
-          (slog @@ OpamFilename.to_string @* OpamPath.archive t.root) nv;
+          (slog @@ OpamFilename.to_string OpamFilename.Native @* OpamPath.archive t.root) nv;
         match OpamState.download_archive t nv with
         | None | Some _ -> ()
       ) repo_index;
@@ -369,7 +369,7 @@ let fix_package_descriptions t ~verbose =
   OpamPackage.Set.iter (fun nv ->
       let f = OpamPath.archive t.root nv in
       if OpamFilename.exists f then
-        (log "Cleaning up obsolete archive %a" (slog OpamFilename.to_string) f;
+        (log "Cleaning up obsolete archive %a" (slog (OpamFilename.to_string OpamFilename.Native)) f;
          OpamFilename.remove f))
     (OpamPackage.keys global_index -- all_installed);
 
@@ -482,7 +482,7 @@ let add name kind address ~priority:prio =
        not (OpamGlobals.confirm
               "%S doesn't contain a \"packages\" nor a \"compilers\" directory.\n\
                Is it really the directory of your repo ?"
-              (OpamFilename.Dir.to_string repo_dir))
+              (OpamFilename.Dir.to_string OpamFilename.Native repo_dir))
     then OpamGlobals.exit 1
   );
   let prio = match prio with

@@ -464,13 +464,13 @@ let external_solver_command ~input ~output ~criteria =
   match Filename.basename s with
   | "packup" ->
     [s;
-     OpamFilename.to_string input;
-     OpamFilename.to_string output;
+     OpamFilename.to_string OpamFilename.Command input;
+     OpamFilename.to_string OpamFilename.Command output;
      "-u"; criteria]
   | "aspcud" | _ ->
     [s;
-     OpamFilename.to_string input;
-     OpamFilename.to_string output;
+     OpamFilename.to_string OpamFilename.Command input;
+     OpamFilename.to_string OpamFilename.Command output;
      criteria]
 
 let solver_calls = ref 0
@@ -548,7 +548,7 @@ let dose_solver_callback ~criteria (_,universe,_ as cudf) =
     else
     let r =
       Cudf_parser.load_solution_from_file
-        (OpamFilename.to_string solver_out) universe in
+        (OpamFilename.to_string OpamFilename.Native solver_out) universe in
     OpamFilename.remove solver_out;
     if Cudf.universe_size (snd r) = 0 &&
        not !OpamGlobals.no_base_packages &&

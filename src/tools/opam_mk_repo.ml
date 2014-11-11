@@ -247,7 +247,7 @@ let process {index; gener_digest; dryrun; recurse; names; debug; resolve} =
           | [_] | [] -> nvs
           | pkgdir::(f::_ as subpath)-> match OpamPackage.of_dirname pkgdir with
             | None -> get_nv subpath
-            | Some nv -> match OpamFilename.Dir.to_string f with
+            | Some nv -> match OpamFilename.Dir.to_string OpamFilename.Native f with
               | "url" | "files" -> OpamPackage.Set.add nv nvs
               | _ -> nvs
         in
@@ -278,7 +278,7 @@ let process {index; gener_digest; dryrun; recurse; names; debug; resolve} =
       OpamGlobals.msg "Packages to remove: %s\n" (OpamPackage.Set.to_string to_remove);
     OpamPackage.Set.iter (fun nv ->
         let archive = OpamPath.Repository.archive repo nv in
-        OpamGlobals.msg "Removing %s ...\n" (OpamFilename.to_string archive);
+        OpamGlobals.msg "Removing %s ...\n" (OpamFilename.to_string OpamFilename.Native archive);
         if not dryrun then
           OpamFilename.remove archive
       ) to_remove;
@@ -295,7 +295,7 @@ let process {index; gener_digest; dryrun; recurse; names; debug; resolve} =
           if OpamFilename.exists url_file &&
              OpamFile.URL.kind (OpamFile.URL.read url_file) = `http
           then (
-            OpamGlobals.msg "Building %s\n" (OpamFilename.to_string local_archive);
+            OpamGlobals.msg "Building %s\n" (OpamFilename.to_string OpamFilename.Native local_archive);
             if not dryrun then
               OpamRepository.make_archive ~gener_digest repo prefix nv;
           )

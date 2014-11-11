@@ -85,7 +85,7 @@ let of_filename f =
     None
 
 let list dir =
-  log "list %a" (slog OpamFilename.Dir.to_string) dir;
+  log "list %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dir;
   if OpamFilename.exists_dir dir then (
     let files = OpamFilename.rec_files dir in
     List.fold_left (fun set f ->
@@ -97,17 +97,17 @@ let list dir =
     Set.empty
 
 let prefixes dir =
-  log "prefixes %a" (slog OpamFilename.Dir.to_string) dir;
+  log "prefixes %a" (slog (OpamFilename.Dir.to_string OpamFilename.Native)) dir;
   if OpamFilename.exists_dir dir then (
     let files = OpamFilename.rec_files dir in
     List.fold_left (fun map f ->
         match of_filename f with
         | None   -> map
         | Some c ->
-          let suffix = OpamFilename.Dir.to_string (OpamFilename.dirname f) in
+          let suffix = OpamFilename.Dir.to_string OpamFilename.Native (OpamFilename.dirname f) in
           let prefix =
             match
-              OpamMisc.remove_prefix ~prefix:(OpamFilename.Dir.to_string dir) suffix
+              OpamMisc.remove_prefix ~prefix:(OpamFilename.Dir.to_string OpamFilename.Native dir) suffix
             with
             | "" -> None
             | p  -> Some p in

@@ -94,7 +94,7 @@ let substitute_file env f =
       (fun v ->
          try contents_of_variable_exn env v
          with Not_found ->
-           OpamGlobals.msg "In %s" (OpamFilename.to_string f);
+           OpamGlobals.msg "In %s" (OpamFilename.to_string OpamFilename.Native f);
            OpamVariable.S ("%{"^OpamVariable.Full.to_string v^"}%")) in
   OpamFile.Subst.write f newcontents
 

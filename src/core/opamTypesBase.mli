@@ -57,8 +57,10 @@ val full_action_contents: 'a action -> 'a list
 (** Pretty-prints the cause of an action *)
 val string_of_cause: ('pkg -> string) -> 'pkg cause -> string
 
+(*
 (** Pretty-print *)
 val string_of_upload: upload -> string
+*)
 
 (** Convert a pin kind to a repository kind *)
 val repository_kind_of_pin_kind: pin_kind -> repository_kind option

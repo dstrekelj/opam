@@ -40,35 +40,35 @@ type commands = {
 let do_commands project_root =
   let mkdir d =
     if not (OpamFilename.exists_dir d) then
-      (OpamGlobals.msg "Creating directory %s\n%!" (OpamFilename.Dir.to_string d);
+      (OpamGlobals.msg "Creating directory %s\n%!" (OpamFilename.Dir.to_string OpamFilename.Native d);
        OpamFilename.mkdir d)
   in
   let rec rmdir ~opt d =
     if not (OpamFilename.exists_dir d) then ()
-    else if Sys.readdir (OpamFilename.Dir.to_string d) = [||] then
-      (OpamGlobals.msg "Removing empty dir %S\n" (OpamFilename.Dir.to_string d);
+    else if Sys.readdir (OpamFilename.Dir.to_string OpamFilename.Native d) = [||] then
+      (OpamGlobals.msg "Removing empty dir %S\n" (OpamFilename.Dir.to_string OpamFilename.Native d);
        OpamFilename.rmdir d;
        let parent = OpamFilename.dirname_dir d in
        if parent <> d then rmdir ~opt:true parent)
     else if not opt then
-      OpamGlobals.warning "Directory %S is not empty\n" (OpamFilename.Dir.to_string d)
+      OpamGlobals.warning "Directory %S is not empty\n" (OpamFilename.Dir.to_string OpamFilename.Native d)
   in
   let cp ?exec ~opt ~src ~dst () =
     if OpamFilename.exists src then
       (mkdir (OpamFilename.dirname dst);
        OpamGlobals.msg "%-32s => %s\n"
          (OpamFilename.remove_prefix project_root src)
-         (OpamFilename.to_string dst);
+         (OpamFilename.to_string OpamFilename.Native dst);
        OpamFilename.install ?exec ~src ~dst ())
     else if not opt then
-      OpamGlobals.error "Could not find %S" (OpamFilename.to_string src)
+      OpamGlobals.error "Could not find %S" (OpamFilename.to_string OpamFilename.Native src)
   in
   let rm ~opt f =
     if OpamFilename.exists f then
-      (OpamGlobals.msg "Removing %s\n" (OpamFilename.to_string f);
+      (OpamGlobals.msg "Removing %s\n" (OpamFilename.to_string OpamFilename.Native f);
        OpamFilename.remove f)
     else if not opt then
-      OpamGlobals.warning "%S doesn't exist" (OpamFilename.to_string f)
+      OpamGlobals.warning "%S doesn't exist" (OpamFilename.to_string OpamFilename.Native f)
   in
   let confirm s f =
     if OpamGlobals.confirm "%s" s then f ()
@@ -80,11 +80,11 @@ let script_commands project_root ochan =
   Printf.fprintf ochan "#!/bin/bash\n";
   let mkdir d =
     if not (List.mem d !made_dirs) then (
-      Printf.fprintf ochan "mkdir -p %S\n" (OpamFilename.Dir.to_string d);
+      Printf.fprintf ochan "mkdir -p %S\n" (OpamFilename.Dir.to_string OpamFilename.Command d);
       made_dirs := d :: !made_dirs
     ) in
   let rmdir ~opt d =
-    let f = OpamFilename.Dir.to_string d in
+    let f = OpamFilename.Dir.to_string OpamFilename.Command d in
     Printf.fprintf ochan "if [ -d %S ]\n" f;
     Printf.fprintf ochan "then rmdir -p %S 2>/dev/null" f;
     if not opt then
@@ -98,7 +98,7 @@ let script_commands project_root ochan =
       | Some false -> "-m 0644"
       | None -> "" in
     let src = OpamFilename.remove_prefix project_root src in
-    let dst = OpamFilename.to_string dst in
+    let dst = OpamFilename.to_string OpamFilename.Command dst in
     Printf.fprintf ochan "if [ -e %S ]\n" src;
     Printf.fprintf ochan "then install %s %S %S\n" mode src dst;
     if not opt then
@@ -106,7 +106,7 @@ let script_commands project_root ochan =
     Printf.fprintf ochan "fi\n"
   in
   let rm ~opt file =
-    let f = OpamFilename.to_string file in
+    let f = OpamFilename.to_string OpamFilename.Command file in
     Printf.fprintf ochan "if [ -e %S ]; then rm -f %S\n" f f;
     if not opt then
       Printf.fprintf ochan "else echo \"Warning: %s doesn't exist\"\n" f;
@@ -178,7 +178,7 @@ let install options =
        let src_file = OpamFilename.create (OpamFilename.cwd ()) src.c in
        cmd.confirm
          (Printf.sprintf "Do you want to install %s to %s ?"
-            (OpamFilename.Base.to_string src.c) (OpamFilename.to_string dst))
+            (OpamFilename.Base.to_string src.c) (OpamFilename.to_string OpamFilename.Native dst))
          (fun () -> cmd.cp ~opt:false ~src:src_file ~dst ())
     ) (OpamFile.Dot_install.misc instfile)
 
@@ -209,7 +209,7 @@ let uninstall options =
   List.iter
     (fun (_src, dst) ->
        cmd.confirm
-         (Printf.sprintf "Remove %s ?" (OpamFilename.to_string dst))
+         (Printf.sprintf "Remove %s ?" (OpamFilename.to_string OpamFilename.Native dst))
          (fun () -> cmd.rm ~opt:false dst))
     (OpamFile.Dot_install.misc instfile)
 

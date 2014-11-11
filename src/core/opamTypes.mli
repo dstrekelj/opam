@@ -268,12 +268,15 @@ type universe = {
 
 (** {2 Command line arguments} *)
 
+(*
+@@DRA This type appears to be unused, which makes working out how to process its filename values tricky!
 (** Upload arguments *)
 type upload = {
   upl_opam   : filename;
   upl_descr  : filename;
   upl_archive: filename;
 }
+*)
 
 (** Pinned packages options *)
 type pin_option =

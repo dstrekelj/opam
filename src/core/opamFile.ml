@@ -85,7 +85,7 @@ module X = struct
 
     let of_channel (filename:filename) (ic:in_channel) =
       let lexbuf = Lexing.from_channel ic in
-      let filename = OpamFilename.to_string filename in
+      let filename = OpamFilename.to_string OpamFilename.Native filename in
       lexbuf.Lexing.lex_curr_p <- { lexbuf.Lexing.lex_curr_p with
                                     Lexing.pos_fname = filename };
       OpamParser.main OpamLexer.token lexbuf filename
@@ -226,7 +226,7 @@ module X = struct
     let to_string filename s =
       let lines =
         List.rev_map
-          (fun f -> [OpamFilename.to_string f])
+          (fun f -> [OpamFilename.to_string OpamFilename.Native f])
           (OpamFilename.Set.elements s) in
       Lines.to_string filename lines
 
@@ -357,7 +357,7 @@ module X = struct
       let url_name = string_of_repository_kind t.kind in
       let s = {
         file_format   = OpamVersion.current;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents = [
           OpamFormat.make_variable (
                     url_name ,
@@ -399,7 +399,7 @@ module X = struct
         | "uninstalled" -> `Uninstalled
         | s ->
           OpamGlobals.error_and_exit "Invalid installation status (col. 3) in %s: %S"
-            (OpamFilename.to_string filename) s
+            (OpamFilename.to_string OpamFilename.Native filename) s
       in
       let add (installed,roots,pinned) n v state p =
         let name = OpamPackage.Name.of_string n in
@@ -425,7 +425,7 @@ module X = struct
             add acc n v (state r) (Some (pin_kind_of_string pk,p))
           | l ->
             OpamGlobals.error_and_exit "Invalid line in %s: %S"
-              (OpamFilename.to_string filename)
+              (OpamFilename.to_string OpamFilename.Native filename)
               (String.concat " " l)
         )
         (OpamPackage.Set.empty, OpamPackage.Set.empty, OpamPackage.Name.Map.empty)
@@ -644,7 +644,7 @@ module X = struct
     let to_string filename t =
       let s = {
         file_format   = OpamVersion.current;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents = [
           OpamFormat.make_variable (s_name    ,
                     OpamFormat.make_string (OpamRepositoryName.to_string t.repo_name));
@@ -655,7 +655,7 @@ module X = struct
           OpamFormat.make_variable (s_priority,
                     OpamFormat.make_int t.repo_priority);
           OpamFormat.make_variable (s_root,
-                    OpamFormat.make_string (OpamFilename.Dir.to_string t.repo_root));
+                    OpamFormat.make_string (OpamFilename.Dir.to_string OpamFilename.Native t.repo_root));
         ] } in
       Syntax.to_string [] s
 
@@ -886,7 +886,7 @@ module X = struct
       in
       let s = {
         file_format   = OpamVersion.current;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents = [
           OpamFormat.make_variable (s_opam_version,
                     OpamFormat.make_string (OpamVersion.to_string t.opam_version));
@@ -1173,7 +1173,7 @@ module X = struct
       in
       let s = {
         file_format   = t.opam_version;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents = [
           OpamFormat.make_variable (s_opam_version,
                     (OpamVersion.to_string @> OpamFormat.make_string) t.opam_version);
@@ -1616,11 +1616,11 @@ module X = struct
              make_option
                (fun src -> make_string (string_of_optional src))
                (fun dst ->
-                  [make_string (OpamFilename.to_string dst)])
+                  [make_string (OpamFilename.to_string OpamFilename.Native dst)])
                (src, Some dst)) in
       let s = {
         file_format   = OpamVersion.current;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents = [
           make_variable (s_bin     , mk      t.bin);
           make_variable (s_sbin    , mk      t.sbin);
@@ -1702,7 +1702,7 @@ module X = struct
         List.rev_map (fun (k,v) -> make_variable (OpamVariable.to_string k, of_value v)) l in
       Syntax.to_string [] {
         file_format   = OpamVersion.current;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents = of_variables t
       }
 
@@ -1840,7 +1840,7 @@ module X = struct
       let name_d, version_d = match OpamCompiler.of_filename filename with
         | None   ->
           OpamFormat.bad_format "Filename %S isn't in the form <name>.<version>"
-            (OpamFilename.to_string filename)
+            (OpamFilename.to_string OpamFilename.Native filename)
         | Some c -> c, OpamCompiler.version c in
       let name =
         try OpamFormat.assoc_default name_d s s_name
@@ -1849,7 +1849,7 @@ module X = struct
       in
       if name_d <> name then (
         OpamGlobals.warning "The file %s contains a bad 'name' field: %s instead of %s"
-          (OpamFilename.to_string filename)
+          (OpamFilename.to_string OpamFilename.Native filename)
           (OpamCompiler.to_string name)
           (OpamCompiler.to_string name_d);
         if !OpamGlobals.strict then
@@ -1863,7 +1863,7 @@ module X = struct
       if name <> OpamCompiler.system && version_d <> version then (
         OpamGlobals.warning
           "The file %s contains a bad 'version' field: %s instead of %s"
-          (OpamFilename.to_string filename)
+          (OpamFilename.to_string OpamFilename.Native filename)
           (OpamCompiler.Version.to_string version)
           (OpamCompiler.Version.to_string version_d);
         if !OpamGlobals.strict then
@@ -1912,12 +1912,12 @@ module X = struct
       if build <> [] && (configure @ make) <> [] && not permissive then
         OpamGlobals.error_and_exit
           "%s: You cannot use 'build' and 'make'/'configure' fields at the same time."
-          (OpamFilename.to_string filename);
+          (OpamFilename.to_string OpamFilename.Native filename);
       if not preinstalled && src = None && not permissive then
         OpamGlobals.error_and_exit
           "%s: You should either specify an url (with 'sources')  or use 'preinstalled: \
            true' to pick the already installed compiler version."
-          (OpamFilename.to_string filename);
+          (OpamFilename.to_string OpamFilename.Native filename);
       { opam_version; name; version; src; kind;
         patches; configure; make; build;
         packages; preinstalled; env;
@@ -1931,7 +1931,7 @@ module X = struct
         | None -> None in
       let s = {
         file_format   = s.opam_version;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents = [
           make_variable (s_opam_version,
                     make_string (OpamVersion.to_string s.opam_version))
@@ -1952,7 +1952,7 @@ module X = struct
           ) @ [
             make_variable (s_patches,
                       make_list
-                        (OpamFilename.to_string @> make_string)
+                        (OpamFilename.to_string OpamFilename.Native @> make_string)
                         s.patches);
             make_variable (s_configure, make_string_list s.configure);
             make_variable (s_make, make_string_list s.make);
@@ -2061,7 +2061,7 @@ module X = struct
       let opam_version = OpamVersion.to_string t.opam_version in
       let s = {
         file_format   = t.opam_version;
-        file_name     = OpamFilename.to_string filename;
+        file_name     = OpamFilename.to_string OpamFilename.Native filename;
         file_contents =
           (OpamFormat.make_variable (s_opam_version, OpamFormat.make_string opam_version))
           :: (
@@ -2165,7 +2165,7 @@ module Make (F : F) = struct
           OpamGlobals.error_and_exit "Strict mode: aborting"
         else raise e
     else
-      OpamSystem.internal_error "File %s does not exist" (OpamFilename.to_string f)
+      OpamSystem.internal_error "File %s does not exist" (OpamFilename.to_string OpamFilename.Native f)
 
   let safe_read f =
     if OpamFilename.exists f then
@@ -2173,7 +2173,7 @@ module Make (F : F) = struct
         OpamGlobals.msg "[skipped]\n";
         F.empty
     else (
-      log "Cannot find %a" (slog OpamFilename.to_string) f;
+      log "Cannot find %a" (slog (OpamFilename.to_string OpamFilename.Native)) f;
       F.empty
     )
 
