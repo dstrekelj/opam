@@ -147,6 +147,13 @@ CAMLprim value Env_SendMessageTimeout_byte(value * argv, int argn)
   return Env_SendMessageTimeout(argv[0], argv[1], argv[2], argv[3], argv[4], argv[5]);
 }
 
+CAMLprim value Env_GetCurrentProcessID(value unit)
+{
+  CAMLparam1(unit);
+
+  CAMLreturn(Val_int(GetCurrentProcessId()));
+}
+
 /*
  * Env_parent_putenv is implemented using Process Injection.
  * Idea inspired by Bill Stewart's editvar (http://www.westmesatech.com/editv.html)

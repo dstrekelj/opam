@@ -390,9 +390,18 @@ let default_opam_dir =
   try OpamMisc.getenv "OPAMROOT"
   with Not_found -> Filename.concat home ".opam"
 
+external getpid_stub : unit -> int = "Env_GetCurrentProcessID"
+
+let getpid =
+  (* See OCaml PR 4034 *)
+  if OpamMisc.os () = OpamMisc.Win32 then
+    getpid_stub
+  else
+    Unix.getpid
+
 let root_dir_tmp =
   Filename.concat Filename.temp_dir_name
-    ("opam-" ^ string_of_int (Unix.getpid ()))
+    ("opam-" ^ string_of_int (getpid ()))
 
 let root_dir = ref root_dir_tmp
 
@@ -427,7 +436,7 @@ let timestamp () =
 let log section ?(level=1) fmt =
   if !debug && level <= !debug_level then
     gen_msg stderr ("%s  %06d  %a  " ^^ fmt ^^ "\n%!")
-      (timestamp ()) (Unix.getpid ()) (acolor_w 30 `yellow) section
+      (timestamp ()) (getpid ()) (acolor_w 30 `yellow) section
   else
     Printf.ifprintf stderr fmt
 

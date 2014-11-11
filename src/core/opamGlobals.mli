@@ -85,6 +85,7 @@ val switch : [ `Command_line of string | `Env of string | `Not_set ] ref
 val external_tags : string list ref
 val home : string
 val default_opam_dir : string
+val getpid : unit -> int
 val root_dir : string ref
 
 (** The initial value of root_dir, set in the tmpdir before initialised *)
