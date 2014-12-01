@@ -37,6 +37,10 @@ module Version: sig
   val eval_relop: OpamFormula.relop -> t -> t -> bool
 end
 
+module System: sig
+  include OpamMisc.ABSTRACT
+end
+
 (** Compiler names *)
 include OpamMisc.ABSTRACT
 
@@ -49,6 +53,9 @@ val list: OpamFilename.Dir.t -> Set.t
 
 (** List the compiler available in a directory (and their prefix) *)
 val prefixes: OpamFilename.Dir.t -> string option Map.t
+
+(** Return the OCaml system type of the compiler *)
+val to_system: t -> System.t
 
 (** System compiler *)
 val system: t

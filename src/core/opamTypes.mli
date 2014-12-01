@@ -98,6 +98,9 @@ type opam_version = OpamVersion.t
 (** Compiler constraints *)
 type compiler_constraint = OpamCompiler.Version.constr
 
+(** Compiler systems *)
+type compiler_system = OpamCompiler.System.t
+
 (** {2 Variables} *)
 
 (** Variables *)

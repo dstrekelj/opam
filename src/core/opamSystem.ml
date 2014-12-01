@@ -635,6 +635,16 @@ let system_ocamlc_where = system [ "ocamlc"; "-where" ]
 
 let system_ocamlc_version = system [ "ocamlc"; "-version" ]
 
+let system_ocamlc_system = lazy (
+  let env = Lazy.force reset_env in
+  match read_command_output_opt ~verbose:false ~env [ "ocamlc"; "-config" ] with
+    None -> None
+  | Some ((_::_) as l) ->
+    let item = List.find (fun s -> fst (Option.get (OpamMisc.cut_at s ':')) = "system") l in
+    Some (String.trim (snd (Option.get (OpamMisc.cut_at item ':'))))
+  | Some ([])   -> internal_error "%S is empty." (String.concat " " [ "ocamlc"; "-config" ])
+)
+
 let download_command =
   let retry = string_of_int OpamGlobals.download_retry in
   let wget ~compress:_ src =

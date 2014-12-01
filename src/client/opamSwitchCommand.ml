@@ -48,8 +48,15 @@ let list ~print_short ~installed ~all =
         else installed_str in
       let n = OpamSwitch.to_string name in
       let c = OpamCompiler.to_string comp in
+      let y =
+        if comp = OpamCompiler.system then
+          match Lazy.force OpamSystem.system_ocamlc_system with
+          | None -> "??"
+          | Some v -> v
+        else
+          OpamCompiler.System.to_string (OpamCompiler.to_system comp) in
       let d = descr comp in
-      (n, s, c, d) :: acc
+      (n, s, c, y, d) :: acc
     ) t.aliases [] in
 
   let descrs =
@@ -76,7 +83,7 @@ let list ~print_short ~installed ~all =
     List.fold_left (fun acc comp ->
       let c = OpamCompiler.to_string comp in
       let d = descr comp in
-      (not_installed_str, not_installed_str, c, d) :: acc
+      (not_installed_str, not_installed_str, c, not_installed_str, d) :: acc
     ) [] l in
 
   let to_show =
@@ -87,16 +94,17 @@ let list ~print_short ~installed ~all =
     else
       installed_s @ mk officials in
 
-  let max_name, max_state, max_compiler =
-    List.fold_left (fun (n,s,c) (name, state, compiler, _) ->
+  let max_name, max_state, max_compiler, max_system =
+    List.fold_left (fun (n,s,c,y) (name, state, compiler, system, _) ->
       let n = max (String.length name) n in
       let s = max (String.length state) s in
       let c = max (String.length compiler) c in
-      (n, s, c)
-    ) (0,0,0) to_show in
+      let y = max (String.length system) y in
+      (n, s, c, y)
+    ) (0,0,0,0) to_show in
 
   let count = ref (List.length to_show) in
-  let print_compiler (name, state, compiler, descr) =
+  let print_compiler (name, state, compiler, system, descr) =
     decr count;
     if print_short then (
       let name =
@@ -114,6 +122,7 @@ let list ~print_short ~installed ~all =
         then OpamGlobals.colorise `bold s
         else s in
       let colored_name = bold_current name in
+      let colored_system = bold_current system in
       let colored_state =
         if state = not_installed_str then state else
           bold_current (OpamGlobals.colorise `blue state) in
@@ -126,11 +135,19 @@ let list ~print_short ~installed ~all =
           | "" -> ""
           | d  -> "\n"^d^"\n"
         else "" in
-      OpamGlobals.msg "%s %s %s  %s%s\n"
-        (OpamMisc.indent_left colored_name ~visual:name max_name)
-        (OpamMisc.indent_right colored_state ~visual:state max_state)
-        (OpamMisc.indent_left colored_compiler ~visual:compiler max_compiler)
-        colored_descr colored_body in
+      if OpamMisc.os () = OpamMisc.Win32 then
+        OpamGlobals.msg "%s %s %s %s  %s%s\n"
+          (OpamMisc.indent_left colored_name ~visual:name max_name)
+          (OpamMisc.indent_right colored_state ~visual:state max_state)
+          (OpamMisc.indent_left colored_compiler ~visual:compiler max_compiler)
+          (OpamMisc.indent_left colored_system ~visual:system max_system)
+          colored_descr colored_body
+      else
+        OpamGlobals.msg "%s %s %s  %s%s\n"
+          (OpamMisc.indent_left colored_name ~visual:name max_name)
+          (OpamMisc.indent_right colored_state ~visual:state max_state)
+          (OpamMisc.indent_left colored_compiler ~visual:compiler max_compiler)
+          colored_descr colored_body in
 
   List.iter print_compiler to_show;
   if not installed && not all then

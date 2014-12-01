@@ -46,11 +46,41 @@ module Version = struct
 
 end
 
+module System = struct
+  module O = struct
+    type t = Mingw | Mingw64 | MSVC | MSVC64 | Other
+
+    let compare = Pervasives.compare
+
+    let to_string = function
+      Mingw -> "mingw"
+    | Mingw64 -> "mingw64"
+    | MSVC -> "win32"
+    | MSVC64 -> "win64"
+    | Other -> "other"
+
+    let to_json t = `String (to_string t)
+  end
+
+  include O
+
+  let of_string = function
+    "mingw" -> Mingw
+  | "mingw64" -> Mingw64
+  | "win32" -> MSVC
+  | "win64" -> MSVC64
+  | _ -> Other
+
+  module Set = OpamMisc.Set.Make(O)
+  module Map = OpamMisc.Map.Make(O)
+end
+
 module O = struct
 
   type t = {
     version: Version.t;
     name   : string;
+    system : System.t;
   }
 
   let compare t1 t2 =
@@ -60,11 +90,22 @@ module O = struct
 
   let of_string str =
     let version = Version.of_string str in
-    { version; name = str }
+    let system =
+      match OpamMisc.cut_at str '+' with
+        None -> System.Other
+      | Some (_, str) ->
+          match OpamMisc.cut_at str '+' with
+            None ->
+              System.of_string str
+          | Some (_, str) ->
+              System.of_string str in
+    { system; version; name = str }
 
   let to_json t = `String (to_string t)
 
 end
+
+let to_system t = t.O.system
 
 include O
 module Set = OpamMisc.Set.Make(O)
