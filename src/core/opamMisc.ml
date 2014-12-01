@@ -401,14 +401,16 @@ let insert comp x l =
     | l -> x :: l in
   aux l
 
-let env = lazy (
-  let e = Unix.environment () in
+let makeenv e =
   List.rev_map (fun s ->
     match cut_at s '=' with
     | None   -> s, ""
     | Some p -> p
   ) (Array.to_list e)
-)
+
+let env = lazy (
+  makeenv (Unix.environment ()))
+
 let with_process_in cmd f =
   let ic = Unix.open_process_in cmd in
   try
@@ -467,9 +469,9 @@ let getenv =
       | [] -> raise Not_found
       | (a,b)::l -> if compare (String.lowercase a) n = 0 then b else assoc l in
       assoc l in
-    fun n -> assoc (Lazy.force env) (String.lowercase n)
+    fun ?(env = Lazy.force env) n -> assoc env (String.lowercase n)
   else
-    fun n -> List.assoc n (Lazy.force env)
+    fun ?(env = Lazy.force env) n -> List.assoc n env
 
 let env () = Lazy.force env
 

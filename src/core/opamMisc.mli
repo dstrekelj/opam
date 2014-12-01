@@ -251,10 +251,12 @@ type os =
 val os : unit -> os
 
 (** Lazy environment variable *)
-val getenv: string -> string
+val getenv: ?env:(string * string) list -> string -> string
 
 (** Lazy environment *)
 val env: unit -> (string * string) list
+
+val makeenv: string array -> (string * string) list
 
 (** Windows-only: registry roots *)
 type regroot = HKEY_CLASSES_ROOT
