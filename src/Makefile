@@ -15,8 +15,8 @@ all:
 
 # --
 
-OCAMLFLAGS = -g -w +a-4-9-32-41-44-45
-OCAMLLDFLAGS = -g -w +a-4-9-32-41-44-45
+OCAMLFLAGS = -g -w @a-4-9-32-41-44-45
+OCAMLLDFLAGS = -g -w @a-4-9-32-41-44-45
 ifeq ($(OCAML_4),true)
   OCAMLFLAGS += -bin-annot
   OCAMLLDFLAGS += -bin-annot
@@ -192,7 +192,7 @@ endef
 export PROJ_client
 
 # -- opam binary -- #
-opam: $(addsuffix $(LIBEXT),$(OPAMLIB)) ALWAYS
+opam: opam-putenv.exe $(addsuffix $(LIBEXT),$(OPAMLIB)) ALWAYS
 	$(MAKE) -f $(OCAMLMAKEFILE) subprojs SUBPROJS=opam SUBTARGET=$(BINTARGET)
 
 define PROJ_opam

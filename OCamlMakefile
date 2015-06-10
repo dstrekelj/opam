@@ -208,7 +208,7 @@ export RPATH_FLAG
 
 ifndef MSVC
 ifndef PIC_CFLAGS
-  PIC_CFLAGS := -fPIC
+#  PIC_CFLAGS := -fPIC
 endif
 ifndef PIC_CPPFLAGS
   PIC_CPPFLAGS := -DPIC
