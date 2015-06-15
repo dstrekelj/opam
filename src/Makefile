@@ -15,7 +15,7 @@ all:
 
 # --
 
-OCAMLFLAGS = -g -w @a-4-9-32-41-44-45
+OCAMLFLAGS = -g -w @a-3-4-9-32-41-44-45-48
 OCAMLLDFLAGS = -g -w @a-4-9-32-41-44-45
 ifeq ($(OCAML_4),true)
   OCAMLFLAGS += -bin-annot
