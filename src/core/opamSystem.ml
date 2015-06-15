@@ -447,6 +447,20 @@ let install ?exec src dst =
     ("install" :: "-m" :: (if exec then "0755" else "0644") ::
      [ src; dst ])
 
+let convert_path =
+  if OpamMisc.os () = OpamMisc.Win32 then
+    (* rsync is an unusual case in Cygwin: because of the syntax for remotes (host:path), it doesn't
+     * recognise the normal forward-slash notation (e.g. C:/WINDOWS) for commands so we convert them
+     * using cygpath instead.
+     * Not aware of non-Cygwin implementations of rsync for Windows. If there are, this can be
+     * replaced either with an option (flexlink -cygpath) or with detection (e.g. with cygcheck)
+     * to work out if rsync.exe is linked against cygwin1.dll
+     *)
+    fun path ->
+      List.hd (read_command_output ["cygpath"; path])
+  else
+    fun x -> x
+
 module Tar = struct
 
   let extensions =
@@ -478,7 +492,7 @@ module Tar = struct
 
   let extract_function file =
     let command c dir =
-      command [ "tar" ; Printf.sprintf "xf%c" c ; file; "-C" ; dir ] in
+      command [ "tar" ; Printf.sprintf "xf%c" c ; convert_path file; "-C" ; convert_path dir ] in
 
     let ext =
       List.fold_left

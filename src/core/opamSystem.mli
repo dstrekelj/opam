@@ -201,3 +201,5 @@ val print_stats: unit -> unit
 
 (** The separator character for the PATH variable *)
 val path_sep: char
+
+val convert_path : string -> string

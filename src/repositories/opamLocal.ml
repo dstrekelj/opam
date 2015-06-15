@@ -40,20 +40,6 @@ let call_rsync args result unavail =
       unavail
     | _ -> raise e
 
-let convert_path =
-  if OpamMisc.os () = OpamMisc.Win32 then
-    (* rsync is an unusual case in Cygwin: because of the syntax for remotes (host:path), it doesn't
-     * recognise the normal forward-slash notation (e.g. C:/WINDOWS) for commands so we convert them
-     * using cygpath instead.
-     * Not aware of non-Cygwin implementations of rsync for Windows. If there are, this can be
-     * replaced either with an option (flexlink -cygpath) or with detection (e.g. with cygcheck)
-     * to work out if rsync.exe is linked against cygwin1.dll
-     *)
-    fun path ->
-      List.hd (OpamSystem.read_command_output ["cygpath"; path])
-  else
-    fun x -> x
-
 let rsync src dst =
   log "rsync: src=%s dst=%s" src dst;
   let remote = String.contains src ':' in
@@ -73,7 +59,7 @@ let rsync src dst =
                "--exclude"; ".hg";
                "--exclude"; ".#*";
                "--delete";
-               convert_path src; convert_path dst; ]
+               OpamSystem.convert_path src; OpamSystem.convert_path dst; ]
     result (Not_available src)
 
 let rsync_dirs src dst =
@@ -108,7 +94,7 @@ let rsync_file src dst =
         "unknown rsync output: {%s}"
         (String.concat ", " l)
   in
-  call_rsync [ rsync_arg; convert_path src_s; convert_path dst_s ]
+  call_rsync [ rsync_arg; OpamSystem.convert_path src_s; OpamSystem.convert_path dst_s ]
     result (Not_available src_s)
 
 module B = struct
