@@ -53,7 +53,7 @@ let do_commands project_root =
     else if not opt then
       OpamConsole.warning "Directory %S is not empty\n" (OpamFilename.Dir.to_string d)
   in
-  let cp ?exec ~opt ~src ~dst () =
+  let do_cp ?exec ~opt ~src ~dst () =
     if OpamFilename.exists src then
       (mkdir (OpamFilename.dirname dst);
        OpamConsole.msg "%-32s => %s\n"
@@ -63,12 +63,46 @@ let do_commands project_root =
     else if not opt then
       OpamConsole.error "Could not find %S" (OpamFilename.to_string src)
   in
-  let rm ~opt f =
+  let cp =
+    if OpamStd.(Sys.os () = Sys.Win32) then
+      fun ?exec ~opt ~src ~dst ->
+        let (src, dst) =
+          if not (OpamFilename.exists src) then
+            let test = OpamFilename.add_extension src "exe" in
+            if OpamFilename.exists test then
+              (test, OpamFilename.add_extension dst "exe")
+            else
+              (src, dst)
+          else
+            (src, dst)
+        in
+          do_cp ?exec ~opt ~src ~dst
+    else
+      do_cp
+  in
+  let do_rm ~opt f =
     if OpamFilename.exists f then
       (OpamConsole.msg "Removing %s\n" (OpamFilename.to_string f);
        OpamFilename.remove f)
     else if not opt then
       OpamConsole.warning "%S doesn't exist" (OpamFilename.to_string f)
+  in
+  let rm =
+    if OpamStd.(Sys.os () = Sys.Win32) then
+      fun ~opt f ->
+        let f =
+          if OpamFilename.exists f then
+            f
+          else
+            let test = OpamFilename.add_extension f "exe" in
+            if OpamFilename.exists test then
+              test
+            else
+              f
+        in
+          do_rm ~opt f
+    else
+      do_rm
   in
   let confirm s f =
     if OpamConsole.confirm "%s" s then f ()
