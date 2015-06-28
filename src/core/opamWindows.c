@@ -19,6 +19,7 @@
 #include <caml/memory.h>
 #include <caml/fail.h>
 #include <caml/alloc.h>
+#include <caml/custom.h>
 
 #ifdef WIN32
 
