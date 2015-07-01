@@ -351,6 +351,45 @@ let get_actual_command ?(env=default_env) ?dir =
         | _ -> raise Not_found
       else raise Not_found
 
+let is_cygwin_variant =
+  if OpamStd.(Sys.os () = Sys.Win32) then
+    let results = Hashtbl.create 17 in
+    let requires_cygwin name =
+      let r =
+        OpamProcess.run
+          (OpamProcess.command ~name:(temp_file "command") ~verbose:false "cygcheck" [name])
+      in
+      OpamProcess.cleanup ~force:true r;
+      if OpamProcess.is_success r then
+        List.exists (fun x -> OpamStd.String.(starts_with ~prefix:"  " x && ends_with ~suffix:"cygwin1.dll" x)) r.OpamProcess.r_stdout
+      else
+        false
+    in
+    fun name ->
+      if Filename.is_relative name then
+        requires_cygwin name
+      else
+        try
+          Hashtbl.find results name
+        with Not_found ->
+          let result = requires_cygwin name
+          in
+            Hashtbl.add results name result;
+            result
+  else
+    fun _ -> false
+
+let apply_cygpath name =
+  let r =
+    OpamProcess.run
+      (OpamProcess.command ~name:(temp_file "command") ~verbose:false "cygpath" [name])
+  in
+  OpamProcess.cleanup ~force:true r;
+  if OpamProcess.is_success r then
+    List.hd r.OpamProcess.r_stdout
+  else
+    OpamConsole.error_and_exit "Could not apply cygpath to %s" name
+
 let command_exists =
   let check_existence ?dir env name =
     try
