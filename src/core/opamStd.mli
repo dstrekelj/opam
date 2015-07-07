@@ -312,8 +312,8 @@ module Win32 : sig
     | HKEY_USERS
 
     (** Registry values *)
-    type 'a value =
-    | REG_SZ : string value (** String values *)
+    type value =
+    | REG_SZ (** String values *)
 
     val of_string : string -> t
     val to_string : t -> string
@@ -334,7 +334,7 @@ module Win32 : sig
   (** Set the consoles text attribute setting
   *)
 
-  external writeRegistry : RegistryHive.t -> string -> string -> 'a RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
+  external writeRegistry : RegistryHive.t -> string -> string -> RegistryHive.value -> 'a -> unit = "OPAMW_WriteRegistry"
   (** [writeRegistry root subKey valueName valueType value] (over)writes a value in the Windows registry
    *)
 end
