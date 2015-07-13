@@ -2,6 +2,7 @@ bin: [
   "src/opam"
   "src/opam-admin"
   "src/opam-installer"
+  "?src/opam-putenv.exe"
 ]
 man: [
   "?doc/man/opam.1"
