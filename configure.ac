@@ -106,7 +106,12 @@ else
   AR=`make --no-print-directory -f conftestMakefile`
 fi
 
-AS_IF([ test "${OS_TYPE}" = "Win32"],[WIN32=1],[WIN32=0])
+AS_IF([ test "${OS_TYPE}" = "Win32"],[
+  WIN32=1
+  AC_PREFIX_DEFAULT([C:/OPAM])
+],[
+  WIN32=0
+])
 
 AC_SUBST(WIN32)
 
