@@ -24,6 +24,14 @@ open OpamProcess.Job.Op
 
 module PackageActionGraph = OpamSolver.ActionGraph
 
+(* @@DRA COMBAK
+ * 1. This function should only be being used if the command actually needs piping to bash
+ * 2. As it's to do with translations, we'd prefer it to be being done more generically in the process (i.e. the value of the opam variables depends on context)
+ *)
+let hacked_escape args =
+  let args = String.concat " " args in
+  String.map (function '\\' -> '/' | c -> c) args
+
 (* Install the package files *)
 let process_dot_install t nv =
   if OpamStateConfig.(!r.dryrun) then
@@ -68,10 +76,26 @@ let process_dot_install t nv =
           OpamFilename.mkdir dst_dir;
         );
         List.iter (fun (base, dst) ->
+            (* @@DRA COMBAK This is ugly - should correctly figure out the data structures involved *)
+            let (base, append) =
+              log "Analysing base %s in %s (%b)\n%!" (OpamFilename.Base.to_string base.c) (OpamFilename.Dir.to_string build_dir) exec;
+              if exec && not (OpamFilename.exists (OpamFilename.create build_dir base.c)) then
+                let base' =
+                  {base with c = OpamFilename.Base.of_string (OpamFilename.Base.to_string base.c ^ ".exe")} in
+                if OpamFilename.exists (OpamFilename.create build_dir base'.c) then
+                  (base', true)
+                else
+                  (base, false)
+              else
+                (base, false) in
             let src_file = OpamFilename.create build_dir base.c in
             let dst_file = match dst with
               | None   -> OpamFilename.create dst_dir (OpamFilename.basename src_file)
-              | Some d -> OpamFilename.create dst_dir d in
+              | Some d ->
+                  if append then
+                    OpamFilename.create dst_dir (OpamFilename.Base.of_string (OpamFilename.Base.to_string d ^ ".exe"))
+                  else
+                    OpamFilename.create dst_dir d in
             if check ~src:build_dir ~dst:dst_dir base then
               OpamFilename.install ~exec ~src:src_file ~dst:dst_file ();
           ) files in
@@ -367,7 +391,8 @@ let remove_package_aux t ?(keep_build=false) ?(silent=false) nv =
             | cmd::args ->
               let text = OpamProcess.make_command_text name ~args cmd in
               Some
-                (OpamSystem.make_command ?name:nameopt ~text cmd args
+                (* @@DRA COMBAK This will actually be done by reading the first bit (using PATH) and seeing if it's a script, obvs! *)
+                (OpamSystem.make_command ?name:nameopt ~text "bash" ["-c"; hacked_escape (cmd::args)]
                    ~env:(OpamTypesBase.env_array env)
                    ~dir:(OpamFilename.Dir.to_string exec_dir)
                    ~verbose:(OpamConsole.verbose ())
@@ -520,9 +545,10 @@ let build_package t source nv =
     | (cmd::args)::commands ->
       let text = OpamProcess.make_command_text name ~args cmd in
       let dir = OpamFilename.Dir.to_string dir in
+      (* @@DRA COMBAK This will actually be done by reading the first bit (using PATH) and seeing if it's a script, obvs! *)
       OpamSystem.make_command ~env ~name ~dir ~text
         ~verbose:(OpamConsole.verbose ()) ~check_existence:false
-        cmd args
+        "bash" ["-c"; hacked_escape (cmd::args)]
       @@> fun result ->
       if OpamProcess.is_success result then
         run_commands commands
@@ -552,9 +578,10 @@ let install_package t nv =
     | (cmd::args)::commands ->
       let text = OpamProcess.make_command_text name ~args cmd in
       let dir = OpamFilename.Dir.to_string dir in
+      (* @@DRA COMBAK This will actually be done by reading the first bit (using PATH) and seeing if it's a script, obvs! *)
       OpamSystem.make_command ~env ~name ~dir ~text
         ~verbose:(OpamConsole.verbose ()) ~check_existence:false
-        cmd args
+        "bash" ["-c"; hacked_escape (cmd::args)]
       @@> fun result ->
       if OpamFile.OPAM.has_flag Pkgflag_Verbose opam then
         List.iter (OpamConsole.msg "%s\n") result.OpamProcess.r_stdout;

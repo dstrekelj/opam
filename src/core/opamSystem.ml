@@ -537,8 +537,13 @@ let install ?exec src dst =
   let exec = match exec with
     | Some e -> e
     | None -> is_exec src in
-  command ("install" :: "-m" :: (if exec then "0755" else "0644") ::
-     [ src; dst ])
+  (* @@DRA COMBAK For installation - needs to be converted properly (for Windows = cp?) *)
+  if OpamStd.Sys.(os () = Win32) then
+    command ("install" :: "-m" :: (if exec then "0755" else "0644") ::
+       [ apply_cygpath src; apply_cygpath dst ])
+  else
+    command ("install" :: "-m" :: (if exec then "0755" else "0644") ::
+       [ src; dst ])
 
 let cpu_count () =
   try
